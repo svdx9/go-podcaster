@@ -14,8 +14,6 @@ import (
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 )
 
-var ErrNotFoundRepo = errors.New("not found")
-
 var (
 	ErrMissingTitle       = errors.New("missing title")
 	ErrUnsupportedMedia   = errors.New("unsupported media type")
