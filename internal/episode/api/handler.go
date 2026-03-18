@@ -5,8 +5,11 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
+	"strconv"
 
+	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+	apiv1 "github.com/svdx9/go-podcaster/internal/api/v1"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 	"github.com/svdx9/go-podcaster/internal/episode/service"
 )
@@ -67,7 +70,7 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params GetV1EpisodesParams) {
+func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params apiv1.GetV1EpisodesParams) {
 	limit := 20
 	if params.Limit != nil && *params.Limit > 0 {
 		limit = *params.Limit
@@ -84,7 +87,7 @@ func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params G
 		return
 	}
 
-	response := make([]Episode, len(episodes))
+	response := make([]apiv1.Episode, len(episodes))
 	for i, ep := range episodes {
 		response[i] = episodeToResponse(ep)
 	}
@@ -96,8 +99,8 @@ func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params G
 	}
 }
 
-func (h *Handler) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid UUID) {
-	err := h.svc.Delete(r.Context(), string(uuid))
+func (h *Handler) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID) {
+	err := h.svc.Delete(r.Context(), uuid.String())
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -125,15 +128,15 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 func (h *Handler) writeError(w http.ResponseWriter, status int, code, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	err := json.NewEncoder(w).Encode(Error{Code: code, Message: message})
+	err := json.NewEncoder(w).Encode(apiv1.Error{Code: code, Message: message})
 	if err != nil {
 		slog.Error("failed to encode error response", "error", err)
 	}
 }
 
-func episodeToResponse(ep repository.Episode) Episode {
-	resp := Episode{
-		Uuid:         UUID(ep.UUID),
+func episodeToResponse(ep repository.Episode) apiv1.Episode {
+	resp := apiv1.Episode{
+		Uuid:         uuid.MustParse(ep.UUID),
 		Title:        ep.Title,
 		Description:  ep.Description,
 		FileName:     ep.FileName,
@@ -152,38 +155,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/v1/episodes":
 		switch r.Method {
 		case http.MethodGet:
-			h.GetV1Episodes(w, r, GetV1EpisodesParams{})
+			var params apiv1.GetV1EpisodesParams
+			if v := r.URL.Query().Get("limit"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					params.Limit = &n
+				}
+			}
+			if v := r.URL.Query().Get("offset"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil {
+					params.Offset = &n
+				}
+			}
+			h.GetV1Episodes(w, r, params)
 		case http.MethodPost:
 			h.PostV1Episodes(w, r)
 		}
 	default:
 		if len(r.URL.Path) > 13 && r.URL.Path[:13] == "/v1/episodes/" {
-			h.DeleteV1EpisodesUuid(w, r, UUID(r.URL.Path[13:]))
+			parsedUUID, _ := uuid.Parse(r.URL.Path[13:])
+			h.DeleteV1EpisodesUuid(w, r, parsedUUID)
 		}
 	}
 }
-
-type GetV1EpisodesParams struct {
-	Limit  *int `form:"limit,omitempty"`
-	Offset *int `form:"offset,omitempty"`
-}
-
-type Error struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-}
-
-type Episode struct {
-	Uuid         UUID      `json:"uuid"`
-	Title        string    `json:"title"`
-	Description  string    `json:"description"`
-	Author       *string   `json:"author,omitempty"`
-	PubDate      time.Time `json:"pub_date"`
-	FileName     string    `json:"file_name"`
-	FileSize     int       `json:"file_size"`
-	MimeType     string    `json:"mime_type"`
-	DurationSecs *int      `json:"duration_secs,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
-type UUID string

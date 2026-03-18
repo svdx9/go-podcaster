@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,16 +19,14 @@ import (
 )
 
 type Server struct {
-	cfg     config.Config
-	handler http.Handler
-	server  *http.Server
+	cfg    config.Config
+	server *http.Server
 }
 
 func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator) *Server {
 	s := &Server{
-		cfg:     cfg,
-		handler: nil,
-		server:  nil,
+		cfg:    cfg,
+		server: nil,
 	}
 
 	r := chi.NewRouter()
@@ -51,26 +50,38 @@ func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator
 		}
 	})
 
-	r.Get("/files/{uuid}/{filename}", serveFileHandler)
+	r.Get("/files/{uuid}/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		uuid := chi.URLParam(r, "uuid")
+		filename := chi.URLParam(r, "filename")
+		filePath := filepath.Join(cfg.UploadDir, uuid, filename)
 
-	s.handler = r
+		file, err := os.Open(filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				http.Error(w, "File not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		defer func() { _ = file.Close() }()
+
+		stat, err := file.Stat()
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		contentType := getContentType(filename)
+		w.Header().Set("Content-Type", contentType)
+		http.ServeContent(w, r, filename, stat.ModTime(), file)
+	})
+
 	s.server = &http.Server{
-		Addr:                         fmt.Sprintf(":%d", cfg.Port),
-		Handler:                      r,
-		ReadTimeout:                  30 * time.Second,
-		WriteTimeout:                 30 * time.Second,
-		IdleTimeout:                  120 * time.Second,
-		MaxHeaderBytes:               0,
-		TLSConfig:                    nil,
-		TLSNextProto:                 nil,
-		ConnState:                    nil,
-		ErrorLog:                     nil,
-		BaseContext:                  nil,
-		ConnContext:                  nil,
-		ReadHeaderTimeout:            0,
-		DisableGeneralOptionsHandler: false,
-		HTTP2:                        nil,
-		Protocols:                    nil,
+		Addr:         fmt.Sprintf(":%d", cfg.Port),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	return s
@@ -110,34 +121,6 @@ func (s *Server) writeNotInitializedError(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		slog.Error("failed to write error response", "error", err)
 	}
-}
-
-func serveFileHandler(w http.ResponseWriter, r *http.Request) {
-	uuid := chi.URLParam(r, "uuid")
-	filename := chi.URLParam(r, "filename")
-
-	filePath := "./uploads/" + uuid + "/" + filename
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	stat, err := file.Stat()
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	contentType := getContentType(filename)
-	w.Header().Set("Content-Type", contentType)
-	http.ServeContent(w, r, filename, stat.ModTime(), file)
 }
 
 func getContentType(filename string) string {
