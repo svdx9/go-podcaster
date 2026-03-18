@@ -42,6 +42,9 @@ func DetectMIME(data []byte, filename string) (string, error) {
 		return "", fmt.Errorf("%w: %s", ErrUnsupportedMIMEType, extMIME)
 	}
 
+	// TODO: MIME detection relies on file extension. http.DetectContentType does not
+	// recognise audio formats and returns application/octet-stream for them.
+	// A more robust check would use a dedicated audio sniffing library.
 	if _, allowed := AllowedMIMETypes[detected]; allowed {
 		return detected, nil
 	}
