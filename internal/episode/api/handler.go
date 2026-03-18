@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
@@ -148,32 +147,4 @@ func episodeToResponse(ep repository.Episode) apiv1.Episode {
 		DurationSecs: &ep.DurationSecs,
 	}
 	return resp
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/v1/episodes":
-		switch r.Method {
-		case http.MethodGet:
-			var params apiv1.GetV1EpisodesParams
-			if v := r.URL.Query().Get("limit"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil {
-					params.Limit = &n
-				}
-			}
-			if v := r.URL.Query().Get("offset"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil {
-					params.Offset = &n
-				}
-			}
-			h.GetV1Episodes(w, r, params)
-		case http.MethodPost:
-			h.PostV1Episodes(w, r)
-		}
-	default:
-		if len(r.URL.Path) > 13 && r.URL.Path[:13] == "/v1/episodes/" {
-			parsedUUID, _ := uuid.Parse(r.URL.Path[13:])
-			h.DeleteV1EpisodesUuid(w, r, parsedUUID)
-		}
-	}
 }

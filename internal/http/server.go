@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,19 +15,29 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
+	openapi_types "github.com/oapi-codegen/runtime/types"
+	apiv1 "github.com/svdx9/go-podcaster/internal/api/v1"
 	"github.com/svdx9/go-podcaster/internal/config"
+	episodeHandler "github.com/svdx9/go-podcaster/internal/episode/api"
 	"github.com/svdx9/go-podcaster/internal/feed"
 )
 
+type feedGenerator interface {
+	Render(ctx context.Context, w io.Writer) error
+}
 type Server struct {
-	cfg    config.Config
-	server *http.Server
+	*episodeHandler.Handler
+	cfg     config.Config
+	server  *http.Server
+	feedgen feedGenerator
 }
 
-func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator) *Server {
+func New(cfg config.Config, episodeHandler *episodeHandler.Handler, feedGen *feed.Generator) *Server {
 	s := &Server{
-		cfg:    cfg,
-		server: nil,
+		Handler: episodeHandler,
+		cfg:     cfg,
+		server:  nil,
+		feedgen: feedGen,
 	}
 
 	r := chi.NewRouter()
@@ -35,56 +46,59 @@ func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator
 	r.Use(middleware.Recoverer)
 	r.Use(render.SetContentType(render.ContentTypeJSON))
 
-	r.Mount("/v1", episodeHandler)
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/feed.xml", http.StatusMovedPermanently)
-	})
-
-	r.Get("/feed.xml", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml")
-		err := feedGen.Render(r.Context(), w)
-		if err != nil {
-			slog.Error("failed to render feed", "error", err)
-			s.writeNotInitializedError(w, r)
-		}
-	})
-
-	r.Get("/files/{uuid}/{filename}", func(w http.ResponseWriter, r *http.Request) {
-		uuid := chi.URLParam(r, "uuid")
-		filename := chi.URLParam(r, "filename")
-		filePath := filepath.Join(cfg.UploadDir, uuid, filename)
-
-		file, err := os.Open(filePath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				http.Error(w, "File not found", http.StatusNotFound)
-				return
-			}
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		defer func() { _ = file.Close() }()
-
-		stat, err := file.Stat()
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		contentType := getContentType(filename)
-		w.Header().Set("Content-Type", contentType)
-		http.ServeContent(w, r, filename, stat.ModTime(), file)
-	})
+	r.Mount("/", apiv1.HandlerFromMux(s, chi.NewMux()))
 
 	s.server = &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		Handler:      r,
 	}
 
 	return s
+}
+
+func (s *Server) GetRoot(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/feed.xml", http.StatusMovedPermanently)
+}
+
+func (s *Server) GetFeedXml(w http.ResponseWriter, r *http.Request) {
+	// Get iTunes-compatible RSS feed
+	// (GET /feed.xml)
+	w.Header().Set("Content-Type", "application/xml")
+	err := s.feedgen.Render(r.Context(), w)
+	if err != nil {
+		slog.Error("failed to render feed", "error", err)
+		s.writeNotInitializedError(w, r)
+	}
+}
+
+func (s *Server) GetFilesUuidFilename(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID, filename string) {
+	// Serve audio file
+	// (GET /files/{uuid}/{filename})
+	filePath := filepath.Join(s.cfg.UploadDir, uuid.String(), filename)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = file.Close() }()
+
+	stat, err := file.Stat()
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	contentType := getContentType(filename)
+	w.Header().Set("Content-Type", contentType)
+	http.ServeContent(w, r, filename, stat.ModTime(), file)
 }
 
 type slogLogFormatter struct{}

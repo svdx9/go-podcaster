@@ -9,6 +9,19 @@ servers:
     description: Current server
 
 paths:
+  /:
+    get:
+      operationId: GetRoot
+      summary: Redirect to RSS feed
+      responses:
+        "301":
+          description: Permanent redirect to /feed.xml
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /feed.xml
+
   /v1/episodes:
     post:
       operationId: PostV1Episodes
