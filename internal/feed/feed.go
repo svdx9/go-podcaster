@@ -85,9 +85,14 @@ func (g *Generator) Render(ctx context.Context, w io.Writer) error {
 		Language:    g.podcastLanguage,
 		Author:      g.podcastAuthor,
 		Category:    g.podcastCategory,
-		Image:       &ItunesImage{Href: g.podcastImageURL},
 		Items:       items,
 	}
+
+	var image *ItunesImage
+	if g.podcastImageURL != "" {
+		image = &ItunesImage{Href: g.podcastImageURL}
+	}
+	channel.Image = image
 
 	feed := struct {
 		XMLName     xml.Name `xml:"rss"`
