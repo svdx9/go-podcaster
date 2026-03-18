@@ -7,15 +7,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/audio"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 )
 
+var ErrNotFoundRepo = errors.New("not found")
+
 var (
-	ErrMissingTitle     = errors.New("missing title")
-	ErrUnsupportedMedia = errors.New("unsupported media type")
+	ErrMissingTitle       = errors.New("missing title")
+	ErrUnsupportedMedia   = errors.New("unsupported media type")
+	ErrMissingDescription = errors.New("description is required")
+	ErrMissingFile        = errors.New("file is required")
+	ErrFileNotSeekable    = errors.New("file must be seekable")
 )
 
 type UploadRequest struct {
@@ -42,23 +48,26 @@ func New(repo repository.Repository, uploadDir string) *Service {
 
 func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Episode, error) {
 	if req.Description == "" {
-		return repository.Episode{}, errors.New("description is required")
+		return repository.Episode{}, ErrMissingDescription
 	}
 	if req.File == nil {
-		return repository.Episode{}, errors.New("file is required")
+		return repository.Episode{}, ErrMissingFile
 	}
 
 	data, ok := req.File.(io.ReadSeeker)
 	if !ok {
-		return repository.Episode{}, errors.New("file must be seekable")
+		return repository.Episode{}, ErrFileNotSeekable
 	}
 
 	header := make([]byte, 512)
-	if _, err := data.Read(header); err != nil && err != io.EOF {
-		return repository.Episode{}, fmt.Errorf("failed to read file header: %w", err)
+	n, readErr := data.Read(header)
+	if readErr != nil && readErr != io.EOF {
+		return repository.Episode{}, fmt.Errorf("failed to read file header: %w", readErr)
 	}
-	if _, err := data.Seek(0, io.SeekStart); err != nil {
-		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", err)
+	_ = n
+	_, seekErr := data.Seek(0, io.SeekStart)
+	if seekErr != nil {
+		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
 	}
 
 	mime, err := audio.DetectMIME(header, req.Filename)
@@ -70,8 +79,9 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 	if err != nil {
 		return repository.Episode{}, fmt.Errorf("failed to extract metadata: %w", err)
 	}
-	if _, err := data.Seek(0, io.SeekStart); err != nil {
-		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", err)
+	_, seekErr = data.Seek(0, io.SeekStart)
+	if seekErr != nil {
+		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
 	}
 
 	title := req.Title
@@ -82,9 +92,18 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		return repository.Episode{}, ErrMissingTitle
 	}
 
+	pubDate := time.Now()
+	if req.PubDate != "" {
+		parsed, parseErr := time.Parse(time.RFC3339, req.PubDate)
+		if parseErr == nil {
+			pubDate = parsed
+		}
+	}
+
 	episodeUUID := uuid.New().String()
 	episodeDir := filepath.Join(s.uploadDir, episodeUUID)
-	if err := os.MkdirAll(episodeDir, 0o755); err != nil {
+	err = os.MkdirAll(episodeDir, 0o755)
+	if err != nil {
 		return repository.Episode{}, fmt.Errorf("failed to create episode directory: %w", err)
 	}
 
@@ -92,16 +111,20 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 	filePath := filepath.Join(episodeDir, episodeUUID+ext)
 	file, err := os.Create(filePath)
 	if err != nil {
-		os.RemoveAll(episodeDir)
+		_ = os.RemoveAll(episodeDir)
 		return repository.Episode{}, fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
 
 	written, err := io.Copy(file, data)
 	if err != nil {
-		file.Close()
-		os.RemoveAll(episodeDir)
+		_ = file.Close()
+		_ = os.RemoveAll(episodeDir)
 		return repository.Episode{}, fmt.Errorf("failed to write file: %w", err)
+	}
+	err = file.Close()
+	if err != nil {
+		_ = os.RemoveAll(episodeDir)
+		return repository.Episode{}, fmt.Errorf("failed to close file: %w", err)
 	}
 
 	episode := repository.Episode{
@@ -109,20 +132,22 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		Title:        title,
 		Description:  req.Description,
 		Author:       req.Author,
+		PubDate:      pubDate,
 		FilePath:     filePath,
 		FileName:     episodeUUID + ext,
 		FileSize:     written,
 		MimeType:     mime,
 		DurationSecs: meta.DurationSecs,
+		CreatedAt:    time.Now(),
 	}
 
 	if req.Author == "" && meta.Artist != "" {
 		episode.Author = meta.Artist
 	}
 
-	if err := s.repo.Insert(ctx, episode); err != nil {
-		file.Close()
-		os.RemoveAll(episodeDir)
+	err = s.repo.Insert(ctx, episode)
+	if err != nil {
+		_ = os.RemoveAll(episodeDir)
 		return repository.Episode{}, fmt.Errorf("failed to insert episode: %w", err)
 	}
 
@@ -135,13 +160,15 @@ func (s *Service) Delete(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	if err := s.repo.Delete(ctx, uuid); err != nil {
+	err = s.repo.Delete(ctx, uuid)
+	if err != nil {
 		return err
 	}
 
 	episodeDir := filepath.Join(s.uploadDir, uuid)
-	if err := os.RemoveAll(episodeDir); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove episode directory: %w", err)
+	removeErr := os.RemoveAll(episodeDir)
+	if removeErr != nil && !os.IsNotExist(removeErr) {
+		return fmt.Errorf("failed to remove episode directory: %w", removeErr)
 	}
 
 	return nil

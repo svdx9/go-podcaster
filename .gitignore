@@ -5,3 +5,4 @@ tmp/
 uploads/
 bin/
 db/
+coverage.out

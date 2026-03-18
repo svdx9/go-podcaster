@@ -48,6 +48,7 @@ func (m *mockRepo) ListAll(ctx context.Context) ([]repository.Episode, error) {
 }
 
 func TestRender(t *testing.T) {
+	t.Parallel()
 	pubDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2024, 1, 15, 10, 5, 0, 0, time.UTC)
 
@@ -67,6 +68,7 @@ func TestRender(t *testing.T) {
 				CreatedAt:    createdAt,
 			},
 		},
+		err: nil,
 	}
 
 	g := New(repo, "https://example.com", "Test Podcast", "A test podcast", "Podcast Author", "en-us", "Technology", "")
@@ -94,7 +96,8 @@ func TestRender(t *testing.T) {
 }
 
 func TestRenderEmpty(t *testing.T) {
-	repo := &mockRepo{episodes: []repository.Episode{}}
+	t.Parallel()
+	repo := &mockRepo{episodes: []repository.Episode{}, err: nil}
 
 	g := New(repo, "https://example.com", "Empty Podcast", "No episodes", "Author", "en-us", "", "")
 
@@ -114,6 +117,7 @@ func TestRenderEmpty(t *testing.T) {
 }
 
 func TestFormatDuration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		secs int
 		want string

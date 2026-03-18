@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -8,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+var errMissingEnvVars = errors.New("missing required environment variables")
 
 // Config holds all application configuration loaded from environment variables.
 type Config struct {
@@ -44,7 +47,8 @@ func Load() (Config, error) {
 	cfg.LogLevel = getEnv("LOG_LEVEL", false, "info")
 
 	// Validate required fields are not empty
-	if err := validateRequired(&cfg); err != nil {
+	err := validateRequired(&cfg)
+	if err != nil {
 		return Config{}, fmt.Errorf("config validation failed: %w", err)
 	}
 
@@ -94,7 +98,7 @@ func validateRequired(cfg *Config) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("missing required environment variables: %s", strings.Join(missing, ", "))
+		return fmt.Errorf("%w: %s", errMissingEnvVars, strings.Join(missing, ", "))
 	}
 
 	return nil

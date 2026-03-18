@@ -5,6 +5,7 @@ import (
 )
 
 func TestDetectMIME(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		data     []byte
@@ -64,7 +65,9 @@ func TestDetectMIME(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := DetectMIME(tt.data, tt.filename)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DetectMIME() error = %v, wantErr %v", err, tt.wantErr)
@@ -78,6 +81,7 @@ func TestDetectMIME(t *testing.T) {
 }
 
 func TestAllowedMIMETypes(t *testing.T) {
+	t.Parallel()
 	expected := []string{
 		"audio/mpeg",
 		"audio/x-m4a",

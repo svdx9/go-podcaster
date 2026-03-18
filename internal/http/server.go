@@ -25,7 +25,9 @@ type Server struct {
 
 func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator) *Server {
 	s := &Server{
-		cfg: cfg,
+		cfg:     cfg,
+		handler: nil,
+		server:  nil,
 	}
 
 	r := chi.NewRouter()
@@ -42,9 +44,9 @@ func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator
 
 	r.Get("/feed.xml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/xml")
-		if err := feedGen.Render(r.Context(), w); err != nil {
+		err := feedGen.Render(r.Context(), w)
+		if err != nil {
 			slog.Error("failed to render feed", "error", err)
-			// Return JSON error instead of internal server error
 			s.writeNotInitializedError(w, r)
 		}
 	})
@@ -53,11 +55,22 @@ func New(cfg config.Config, episodeHandler http.Handler, feedGen *feed.Generator
 
 	s.handler = r
 	s.server = &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      r,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:                         fmt.Sprintf(":%d", cfg.Port),
+		Handler:                      r,
+		ReadTimeout:                  30 * time.Second,
+		WriteTimeout:                 30 * time.Second,
+		IdleTimeout:                  120 * time.Second,
+		MaxHeaderBytes:               0,
+		TLSConfig:                    nil,
+		TLSNextProto:                 nil,
+		ConnState:                    nil,
+		ErrorLog:                     nil,
+		BaseContext:                  nil,
+		ConnContext:                  nil,
+		ReadHeaderTimeout:            0,
+		DisableGeneralOptionsHandler: false,
+		HTTP2:                        nil,
+		Protocols:                    nil,
 	}
 
 	return s
@@ -93,7 +106,8 @@ func (s *Server) writeNotInitializedError(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusServiceUnavailable)
 
 	errorResponse := `{"error": "not initialised", "message": "The podcast system has not been initialized. Please set up the database and try again."}`
-	if _, err := w.Write([]byte(errorResponse)); err != nil {
+	_, err := w.Write([]byte(errorResponse))
+	if err != nil {
 		slog.Error("failed to write error response", "error", err)
 	}
 }
@@ -113,7 +127,7 @@ func serveFileHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	stat, err := file.Stat()
 	if err != nil {

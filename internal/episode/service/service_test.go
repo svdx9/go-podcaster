@@ -10,6 +10,10 @@ import (
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 )
 
+var (
+	errTestRead = errors.New("read error")
+)
+
 type mockRepository struct {
 	episodes []repository.Episode
 	err      error
@@ -55,8 +59,9 @@ func (m *mockRepository) ListAll(ctx context.Context) ([]repository.Episode, err
 }
 
 type nonSeeker struct {
-	data []byte
-	pos  int
+	data    []byte
+	pos     int
+	readErr bool
 }
 
 func (n *nonSeeker) Read(p []byte) (int, error) {
@@ -75,7 +80,7 @@ type mockReadSeeker struct {
 
 func (m *mockReadSeeker) Read(p []byte) (n int, err error) {
 	if m.readErr {
-		return 0, errors.New("read error")
+		return 0, errTestRead
 	}
 	if m.pos >= len(m.data) {
 		return 0, nil
@@ -98,6 +103,7 @@ func (m *mockReadSeeker) Seek(offset int64, whence int) (int64, error) {
 }
 
 func TestUploadValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		req     UploadRequest
@@ -108,35 +114,46 @@ func TestUploadValidation(t *testing.T) {
 			req: UploadRequest{
 				Title:       "Test",
 				Description: "",
-				File:        &mockReadSeeker{data: []byte{0xFF, 0xFB}},
+				Author:      "",
+				PubDate:     "",
+				File:        &mockReadSeeker{data: []byte{0xFF, 0xFB}, pos: 0, readErr: false},
 				Filename:    "test.mp3",
+				FileSize:    0,
 			},
-			wantErr: errors.New("description is required"),
+			wantErr: ErrMissingDescription,
 		},
 		{
 			name: "missing file",
 			req: UploadRequest{
 				Title:       "Test",
 				Description: "Test description",
+				Author:      "",
+				PubDate:     "",
 				File:        nil,
 				Filename:    "test.mp3",
+				FileSize:    0,
 			},
-			wantErr: errors.New("file is required"),
+			wantErr: ErrMissingFile,
 		},
 		{
 			name: "file not seekable",
 			req: UploadRequest{
 				Title:       "Test",
 				Description: "Test description",
-				File:        &nonSeeker{data: []byte("test")},
+				Author:      "",
+				PubDate:     "",
+				File:        &nonSeeker{data: []byte("test"), pos: 0, readErr: false},
 				Filename:    "test.mp3",
+				FileSize:    0,
 			},
-			wantErr: errors.New("file must be seekable"),
+			wantErr: ErrFileNotSeekable,
 		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			svc := New(&mockRepository{}, "/tmp/uploads")
 			_, err := svc.Upload(context.Background(), tt.req)
 			if err == nil {
@@ -150,16 +167,19 @@ func TestUploadValidation(t *testing.T) {
 }
 
 func TestListPagination(t *testing.T) {
+	t.Parallel()
 	repo := &mockRepository{
 		episodes: []repository.Episode{
-			{UUID: "1", Title: "Ep1", CreatedAt: time.Now()},
-			{UUID: "2", Title: "Ep2", CreatedAt: time.Now()},
-			{UUID: "3", Title: "Ep3", CreatedAt: time.Now()},
+			{UUID: "1", Title: "Ep1", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
+			{UUID: "2", Title: "Ep2", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
+			{UUID: "3", Title: "Ep3", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
 		},
+		err: nil,
 	}
 	svc := New(repo, "/tmp/uploads")
 
 	t.Run("default limit", func(t *testing.T) {
+		t.Parallel()
 		episodes, err := svc.List(context.Background(), 0, 0)
 		if err != nil {
 			t.Fatalf("List() error = %v", err)
@@ -170,6 +190,7 @@ func TestListPagination(t *testing.T) {
 	})
 
 	t.Run("with limit", func(t *testing.T) {
+		t.Parallel()
 		episodes, err := svc.List(context.Background(), 2, 0)
 		if err != nil {
 			t.Fatalf("List() error = %v", err)
@@ -180,6 +201,7 @@ func TestListPagination(t *testing.T) {
 	})
 
 	t.Run("with offset", func(t *testing.T) {
+		t.Parallel()
 		episodes, err := svc.List(context.Background(), 10, 1)
 		if err != nil {
 			t.Fatalf("List() error = %v", err)
@@ -190,6 +212,7 @@ func TestListPagination(t *testing.T) {
 	})
 
 	t.Run("negative offset becomes zero", func(t *testing.T) {
+		t.Parallel()
 		episodes, err := svc.List(context.Background(), 10, -5)
 		if err != nil {
 			t.Fatalf("List() error = %v", err)

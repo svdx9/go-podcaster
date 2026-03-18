@@ -30,7 +30,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	defer database.Close()
+	defer func() {
+		closeErr := database.Close()
+		if closeErr != nil {
+			slog.Error("failed to close database", "error", closeErr)
+		}
+	}()
 
 	episodeRepo := db.NewEpisodeRepository(database)
 
@@ -51,7 +56,8 @@ func main() {
 
 	server := http.New(cfg, handler, feedGen)
 
-	if err := server.Start(ctx); err != nil {
+	err = server.Start(ctx)
+	if err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }

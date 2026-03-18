@@ -78,20 +78,15 @@ func (g *Generator) Render(ctx context.Context, w io.Writer) error {
 	}
 
 	channel := Channel{
+		XMLName:     xml.Name{Local: "channel", Space: ""},
 		Title:       g.podcastTitle,
 		Description: g.podcastDescription,
 		Link:        g.baseURL,
 		Language:    g.podcastLanguage,
 		Author:      g.podcastAuthor,
+		Category:    g.podcastCategory,
+		Image:       &ItunesImage{Href: g.podcastImageURL},
 		Items:       items,
-	}
-
-	if g.podcastCategory != "" {
-		channel.Category = g.podcastCategory
-	}
-
-	if g.podcastImageURL != "" {
-		channel.Image = &ItunesImage{Href: g.podcastImageURL}
 	}
 
 	feed := struct {
@@ -100,7 +95,7 @@ func (g *Generator) Render(ctx context.Context, w io.Writer) error {
 		XmlnsItunes string   `xml:"xmlns:itunes,attr"`
 		Channel     Channel  `xml:"channel"`
 	}{
-		XMLName:     xml.Name{Local: "rss"},
+		XMLName:     xml.Name{Local: "rss", Space: ""},
 		Version:     "2.0",
 		XmlnsItunes: "http://www.itunes.com/dtds/podcast-1.0.dtd",
 		Channel:     channel,
@@ -108,7 +103,8 @@ func (g *Generator) Render(ctx context.Context, w io.Writer) error {
 
 	enc := xml.NewEncoder(w)
 	enc.Indent("", "  ")
-	if _, err := io.WriteString(w, xml.Header); err != nil {
+	_, err = io.WriteString(w, xml.Header)
+	if err != nil {
 		return err
 	}
 	return enc.Encode(feed)
@@ -118,22 +114,17 @@ func (g *Generator) episodeToItem(ep repository.Episode) Item {
 	pubDate := ep.PubDate.Format(time.RFC1123Z)
 
 	item := Item{
+		XMLName:     xml.Name{Local: "item", Space: ""},
 		Title:       ep.Title,
 		Description: ep.Description,
 		PubDate:     pubDate,
+		Author:      ep.Author,
+		Duration:    formatDuration(ep.DurationSecs),
 		Enclosure: Enclosure{
 			URL:    fmt.Sprintf("%s/files/%s/%s", g.baseURL, ep.UUID, ep.FileName),
 			Length: ep.FileSize,
 			Type:   ep.MimeType,
 		},
-	}
-
-	if ep.Author != "" {
-		item.Author = ep.Author
-	}
-
-	if ep.DurationSecs > 0 {
-		item.Duration = formatDuration(ep.DurationSecs)
 	}
 
 	return item

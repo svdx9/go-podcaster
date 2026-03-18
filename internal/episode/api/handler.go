@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -19,7 +20,8 @@ func New(svc *service.Service) *Handler {
 }
 
 func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	err := r.ParseMultipartForm(32 << 20)
+	if err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "failed to parse multipart form")
 		return
 	}
@@ -35,7 +37,7 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "missing_file", "file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	title := r.FormValue("title")
 	author := r.FormValue("author")
@@ -48,6 +50,7 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 		PubDate:     pubDateStr,
 		File:        file,
 		Filename:    header.Filename,
+		FileSize:    header.Size,
 	}
 
 	episode, err := h.svc.Upload(r.Context(), req)
@@ -58,7 +61,10 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(episodeToResponse(episode))
+	err = json.NewEncoder(w).Encode(episodeToResponse(episode))
+	if err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params GetV1EpisodesParams) {
@@ -84,7 +90,10 @@ func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params G
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		slog.Error("failed to encode response", "error", err)
+	}
 }
 
 func (h *Handler) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid UUID) {
@@ -116,25 +125,24 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 func (h *Handler) writeError(w http.ResponseWriter, status int, code, message string) {
 	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Error{Code: code, Message: message})
+	err := json.NewEncoder(w).Encode(Error{Code: code, Message: message})
+	if err != nil {
+		slog.Error("failed to encode error response", "error", err)
+	}
 }
 
 func episodeToResponse(ep repository.Episode) Episode {
 	resp := Episode{
-		Uuid:        UUID(ep.UUID),
-		Title:       ep.Title,
-		Description: ep.Description,
-		FileName:    ep.FileName,
-		FileSize:    int(ep.FileSize),
-		MimeType:    ep.MimeType,
-		PubDate:     ep.PubDate,
-		CreatedAt:   ep.CreatedAt,
-	}
-	if ep.Author != "" {
-		resp.Author = &ep.Author
-	}
-	if ep.DurationSecs > 0 {
-		resp.DurationSecs = &ep.DurationSecs
+		Uuid:         UUID(ep.UUID),
+		Title:        ep.Title,
+		Description:  ep.Description,
+		FileName:     ep.FileName,
+		FileSize:     int(ep.FileSize),
+		MimeType:     ep.MimeType,
+		PubDate:      ep.PubDate,
+		CreatedAt:    ep.CreatedAt,
+		Author:       &ep.Author,
+		DurationSecs: &ep.DurationSecs,
 	}
 	return resp
 }
