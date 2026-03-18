@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.1
 info:
   title: Go Podcast RSS Backend
   version: v1
@@ -40,30 +40,30 @@ paths:
                 - description
                 - file
       responses:
-        '201':
+        "201":
           description: Episode created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Episode'
-        '400':
+                $ref: "#/components/schemas/Episode"
+        "400":
           description: Bad request - missing title or invalid input
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '415':
+                $ref: "#/components/schemas/Error"
+        "415":
           description: Unsupported media type - invalid file type
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '500':
+                $ref: "#/components/schemas/Error"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
     get:
       operationId: GetV1Episodes
       summary: List all podcast episodes
@@ -84,20 +84,20 @@ paths:
             default: 0
             minimum: 0
       responses:
-        '200':
+        "200":
           description: List of episodes
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Episode'
-        '500':
+                  $ref: "#/components/schemas/Episode"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
   /v1/episodes/{uuid}:
     delete:
@@ -111,27 +111,27 @@ paths:
             type: string
             format: uuid
       responses:
-        '204':
+        "204":
           description: Episode deleted successfully
-        '404':
+        "404":
           description: Episode not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '500':
+                $ref: "#/components/schemas/Error"
+        "500":
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
   /feed.xml:
     get:
       operationId: GetFeedXml
       summary: Get iTunes-compatible RSS feed
       responses:
-        '200':
+        "200":
           description: RSS feed
           content:
             application/xml:
@@ -155,19 +155,19 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Audio file
           content:
             audio/*:
               schema:
                 type: string
                 format: binary
-        '404':
+        "404":
           description: File not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
