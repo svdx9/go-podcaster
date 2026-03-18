@@ -27,7 +27,7 @@ type UploadRequest struct {
 	Description string
 	Author      string
 	PubDate     string
-	File        io.Reader
+	File        io.ReadSeeker
 	Filename    string
 	FileSize    int64
 }
@@ -45,13 +45,6 @@ func New(repo repository.Repository, uploadDir string) *Service {
 }
 
 func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Episode, error) {
-	if req.Description == "" {
-		return repository.Episode{}, ErrMissingDescription
-	}
-	if req.File == nil {
-		return repository.Episode{}, ErrMissingFile
-	}
-
 	data, ok := req.File.(io.ReadSeeker)
 	if !ok {
 		return repository.Episode{}, ErrFileNotSeekable

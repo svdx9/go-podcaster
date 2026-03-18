@@ -39,6 +39,11 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "missing_file", "file is required")
 		return
 	}
+
+	if file == nil {
+		h.writeError(w, http.StatusBadRequest, "missing_file", "file is required")
+		return
+	}
 	defer func() { _ = file.Close() }()
 
 	title := r.FormValue("title")

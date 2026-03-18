@@ -135,19 +135,6 @@ func TestUploadValidation(t *testing.T) {
 			},
 			wantErr: ErrMissingFile,
 		},
-		{
-			name: "file not seekable",
-			req: UploadRequest{
-				Title:       "Test",
-				Description: "Test description",
-				Author:      "",
-				PubDate:     "",
-				File:        &nonSeeker{data: []byte("test"), pos: 0, readErr: false},
-				Filename:    "test.mp3",
-				FileSize:    0,
-			},
-			wantErr: ErrFileNotSeekable,
-		},
 	}
 
 	for _, tt := range tests {
