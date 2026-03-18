@@ -1,0 +1,26 @@
+version: "2"
+linters:
+  # default: standard
+  enable:
+    - unused
+    - exhaustive
+    - err113
+    - paralleltest
+    - misspell
+    - intrange
+    - noinlineerr
+    - gochecknoglobals
+    - exhaustruct
+    - nosprintfhostport
+    - perfsprint
+    - protogetter
+    - recvcheck
+  settings:
+    exhaustruct:
+      allow-empty: true
+    misspell:
+      ignore-rules:
+        - participe
+
+  disable:
+    - depguard

@@ -1,14 +1,15 @@
 # Tooling configuration
 TOOLS_DIR := tools
 TOOLS_BIN := $(abspath $(TOOLS_DIR)/bin)
+GO ?= go
 
 # Versions
-GOLANGCI_LINT_VERSION := v1.64.1
-GOFUMPT_VERSION := latest
-AIR_VERSION := v1.52.3
-MIGRATE_VERSION := v4.16.2
-OAPI_CODEGEN_VERSION := v2.1.0
-SQLC_VERSION := v1.29.0
+GOLANGCI_LINT_VERSION ?= v2.11.3
+GOFUMPT_VERSION ?= v0.9.2
+AIR_VERSION ?= v1.52.3
+MIGRATE_VERSION ?= v4.16.2
+OAPI_CODEGEN_VERSION ?= v2.6.0
+SQLC_VERSION ?= v1.29.0
 
 # Binaries
 GOLANGCI_LINT := $(TOOLS_BIN)/golangci-lint
@@ -29,6 +30,7 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo "  tools-install   Install required build tools to $(TOOLS_BIN)"
+	@echo "  tools-clean     Remove installed build tools from $(TOOLS_BIN)"
 	@echo "  generate        Generate Go code from OpenAPI specification"
 	@echo "  test            Run tests"
 	@echo "  lint            Run linter"
@@ -45,22 +47,28 @@ tools-dir:
 tools-install: tools-dir $(GOLANGCI_LINT) $(GOFUMPT) $(AIR) $(MIGRATE) $(OAPI_CODEGEN) $(SQLC)
 
 $(GOLANGCI_LINT):
-	GOBIN=$(TOOLS_BIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 $(GOFUMPT):
-	GOBIN=$(TOOLS_BIN) go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)
 
 $(AIR):
-	GOBIN=$(TOOLS_BIN) go install github.com/air-verse/air@$(AIR_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install github.com/air-verse/air@$(AIR_VERSION)
 
 $(MIGRATE):
-	GOBIN=$(TOOLS_BIN) go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@$(MIGRATE_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@$(MIGRATE_VERSION)
+
 
 $(OAPI_CODEGEN):
-	GOBIN=$(TOOLS_BIN) go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION)
+
 
 $(SQLC):
-	GOBIN=$(TOOLS_BIN) go install github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
+	GOBIN=$(TOOLS_BIN) $(GO) install github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
+
+.PHONY: tools-clean
+tools-clean:
+	rm -rf $(TOOLS_BIN)
 
 .PHONY: generate
 # generate is defined in Makefile (calls oapi-codegen and sqlc)
