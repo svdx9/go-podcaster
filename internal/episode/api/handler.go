@@ -59,8 +59,8 @@ func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(episodeToResponse(episode))
 	if err != nil {
 		slog.Error("failed to encode response", "error", err)
@@ -123,8 +123,8 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, status int, code, message string) {
-	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(Error{Code: code, Message: message})
 	if err != nil {
 		slog.Error("failed to encode error response", "error", err)
