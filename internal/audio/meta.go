@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"errors"
 	"io"
 
 	"github.com/dhowden/tag"
@@ -17,7 +18,10 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 
 	metadata, err := tag.ReadFrom(r)
 	if err != nil {
-		return meta, nil
+		if errors.Is(err, tag.ErrNoTagsFound) {
+			return meta, nil
+		}
+		return meta, err
 	}
 
 	meta.Title = metadata.Title()
