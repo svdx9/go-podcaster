@@ -84,7 +84,7 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 
 	episodeUUID := uuid.New().String()
 	episodeDir := filepath.Join(s.uploadDir, episodeUUID)
-	if err := os.MkdirAll(episodeDir, 0755); err != nil {
+	if err := os.MkdirAll(episodeDir, 0o755); err != nil {
 		return repository.Episode{}, fmt.Errorf("failed to create episode directory: %w", err)
 	}
 
