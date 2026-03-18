@@ -2,7 +2,6 @@ tools/bin/
 *.db
 uploads/
 tmp/
-uploads/
 bin/
 db/
 coverage.out
