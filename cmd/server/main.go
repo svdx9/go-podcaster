@@ -43,9 +43,15 @@ func main() {
 
 	handler := api.New(svc)
 
+	baseUrl, err := cfg.BaseURLWithPort()
+
+	if err != nil {
+		log.Fatalf("failed to get base URL: %v", err)
+	}
+
 	feedGen := feed.New(
 		episodeRepo,
-		cfg.BaseURLWithPort(),
+		baseUrl,
 		cfg.PodcastTitle,
 		cfg.PodcastDescription,
 		cfg.PodcastAuthor,

@@ -105,11 +105,11 @@ func validateRequired(cfg *Config) error {
 }
 
 // BaseURLWithPort returns the base URL with port appended if it's not the standard port for the URL's scheme.
-func (c Config) BaseURLWithPort() string {
+func (c Config) BaseURLWithPort() (string, error) {
 	parsedURL, err := url.Parse(c.BaseURL)
 	if err != nil {
 		// If URL parsing fails, return the original BaseURL
-		return c.BaseURL
+		return "", err
 	}
 
 	// Determine the standard port for the URL's scheme
@@ -123,7 +123,7 @@ func (c Config) BaseURLWithPort() string {
 		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), strconv.Itoa(c.Port))
 	}
 
-	return parsedURL.String()
+	return parsedURL.String(), nil
 }
 
 // Redacted returns a string representation of the config with sensitive information removed.
