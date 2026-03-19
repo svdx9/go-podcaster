@@ -38,7 +38,12 @@ func Load() (Config, error) {
 	cfg.PodcastAuthor = getEnv("PODCAST_AUTHOR", "")
 
 	// Optional fields with defaults
-	cfg.Port = getEnvInt("PORT", 8080)
+	port, err := getEnvInt("PORT", 8080)
+	if err != nil {
+		return Config{}, fmt.Errorf("config validation failed: %w", err)
+	}
+	cfg.Port = port
+
 	cfg.DBPath = getEnv("DB_PATH", "./podcast.db")
 	cfg.UploadDir = getEnv("UPLOAD_DIR", "./uploads")
 	cfg.PodcastLanguage = getEnv("PODCAST_LANGUAGE", "en-us")
@@ -47,7 +52,7 @@ func Load() (Config, error) {
 	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
 
 	// Validate required fields are not empty
-	err := validateRequired(&cfg)
+	err = validateRequired(&cfg)
 	if err != nil {
 		return Config{}, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -65,16 +70,16 @@ func getEnv(key string, defaultVal string) string {
 }
 
 // getEnvInt retrieves an environment variable as an integer with a default value.
-func getEnvInt(key string, defaultValue int) int {
+func getEnvInt(key string, defaultValue int) (int, error) {
 	valStr := os.Getenv(key)
 	if valStr == "" {
-		return defaultValue
+		return defaultValue, nil
 	}
 	val, err := strconv.Atoi(valStr)
 	if err != nil {
-		return defaultValue
+		return 0, err
 	}
-	return val
+	return val, nil
 }
 
 // validateRequired checks that all required configuration fields are present.
