@@ -39,7 +39,7 @@ func main() {
 
 	episodeRepo := db.NewEpisodeRepository(database)
 
-	svc := service.New(episodeRepo, cfg.UploadDir)
+	svc := service.New(episodeRepo, service.NewLocalFileStore(cfg.UploadDir))
 
 	handler := api.New(svc)
 

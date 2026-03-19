@@ -58,6 +58,15 @@ func (m *mockRepository) ListAll(ctx context.Context) ([]repository.Episode, err
 	return m.episodes, m.err
 }
 
+type memFileStore struct{}
+
+func (m *memFileStore) Save(uuid, ext string, r io.Reader) (string, int64, error) {
+	n, err := io.Copy(io.Discard, r)
+	return uuid + ext, n, err
+}
+
+func (m *memFileStore) Delete(uuid string) error { return nil }
+
 type nonSeeker struct {
 	data    []byte
 	pos     int
@@ -83,7 +92,7 @@ func (m *mockReadSeeker) Read(p []byte) (n int, err error) {
 		return 0, errTestRead
 	}
 	if m.pos >= len(m.data) {
-		return 0, nil
+		return 0, io.EOF
 	}
 	n = copy(p, m.data[m.pos:])
 	m.pos += n
@@ -138,10 +147,9 @@ func TestUploadValidation(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc := New(&mockRepository{}, "/tmp/uploads")
+			svc := New(&mockRepository{}, &memFileStore{})
 			_, err := svc.Upload(context.Background(), tt.req)
 			if err == nil {
 				t.Fatal("Upload() expected error, got nil")
@@ -163,7 +171,7 @@ func TestListPagination(t *testing.T) {
 		},
 		err: nil,
 	}
-	svc := New(repo, "/tmp/uploads")
+	svc := New(repo, &memFileStore{})
 
 	t.Run("default limit", func(t *testing.T) {
 		t.Parallel()
