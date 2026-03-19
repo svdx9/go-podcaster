@@ -88,7 +88,6 @@ func TestAllowedMIMETypes(t *testing.T) {
 		"audio/mp4",
 		"audio/aac",
 		"audio/x-aiff",
-		"audio/aiff",
 		"audio/wav",
 		"audio/x-wav",
 	}

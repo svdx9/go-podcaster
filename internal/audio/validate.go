@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-var AllowedMIMETypes = map[string]struct{}{
+// allow this global
+var AllowedMIMETypes = map[string]struct{}{ //nolint:gochecknoglobals
 	"audio/mpeg":   {},
 	"audio/x-m4a":  {},
 	"audio/mp4":    {},
