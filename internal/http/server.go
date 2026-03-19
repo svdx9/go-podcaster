@@ -48,7 +48,7 @@ func New(cfg config.Config, episodeHandler *episodeHandler.Handler, feedGen *fee
 
 	r.Mount("/", apiv1.HandlerFromMux(s, chi.NewMux()))
 
-	s.server = &http.Server{
+	s.server = &http.Server{ //nolint:exhaustruct
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,

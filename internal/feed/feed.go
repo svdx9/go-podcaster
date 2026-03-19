@@ -86,6 +86,7 @@ func (g *Generator) Render(ctx context.Context, w io.Writer) error {
 		Author:      g.podcastAuthor,
 		Category:    g.podcastCategory,
 		Items:       items,
+		Image:       &ItunesImage{Href: g.podcastImageURL},
 	}
 
 	var image *ItunesImage

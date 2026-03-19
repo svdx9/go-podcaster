@@ -43,7 +43,8 @@ func NewLocalFileStore(uploadDir string) *LocalFileStore {
 
 func (l *LocalFileStore) Save(uuid, ext string, r io.Reader) (string, int64, error) {
 	episodeDir := filepath.Join(l.uploadDir, uuid)
-	if err := os.MkdirAll(episodeDir, 0o755); err != nil {
+	err := os.MkdirAll(episodeDir, 0o755)
+	if err != nil {
 		return "", 0, fmt.Errorf("failed to create episode directory: %w", err)
 	}
 
@@ -55,7 +56,8 @@ func (l *LocalFileStore) Save(uuid, ext string, r io.Reader) (string, int64, err
 	}
 
 	written, err := io.Copy(f, r)
-	if closeErr := f.Close(); closeErr != nil && err == nil {
+	closeErr := f.Close()
+	if closeErr != nil && err == nil {
 		err = fmt.Errorf("failed to close file: %w", closeErr)
 	}
 	if err != nil {
@@ -106,11 +108,10 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 	}
 
 	header := make([]byte, 512)
-	n, readErr := req.File.Read(header)
+	_, readErr := req.File.Read(header)
 	if readErr != nil && readErr != io.EOF {
 		return repository.Episode{}, fmt.Errorf("failed to read file header: %w", readErr)
 	}
-	_ = n
 	_, seekErr := req.File.Seek(0, io.SeekStart)
 	if seekErr != nil {
 		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
@@ -191,7 +192,8 @@ func (s *Service) Delete(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	if err = s.store.Delete(uuid); err != nil {
+	err = s.store.Delete(uuid)
+	if err != nil {
 		return err
 	}
 

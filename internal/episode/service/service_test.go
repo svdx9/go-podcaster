@@ -67,20 +67,6 @@ func (m *memFileStore) Save(uuid, ext string, r io.Reader) (string, int64, error
 
 func (m *memFileStore) Delete(uuid string) error { return nil }
 
-type nonSeeker struct {
-	data    []byte
-	pos     int
-	readErr bool
-}
-
-func (n *nonSeeker) Read(p []byte) (int, error) {
-	if n.pos >= len(n.data) {
-		return 0, io.EOF
-	}
-	n.pos++
-	return copy(p, n.data[n.pos-1:n.pos]), nil
-}
-
 type mockReadSeeker struct {
 	data    []byte
 	pos     int

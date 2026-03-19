@@ -34,7 +34,7 @@ func TestExtract(t *testing.T) {
 
 func TestMetaDuration(t *testing.T) {
 	t.Parallel()
-	m := Meta{
+	m := Meta{ //nolint:exhaustruct
 		DurationSecs: 125,
 	}
 	if m.DurationSecs != 125 {
