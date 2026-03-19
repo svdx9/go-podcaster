@@ -31,7 +31,7 @@ func DetectMIME(data []byte, filename string) (string, error) {
 		".mp4":  "audio/mp4",
 		".aac":  "audio/aac",
 		".aiff": "audio/x-aiff",
-		".aif":  "audio/aiff",
+		".aif":  "audio/x-aiff",
 		".wav":  "audio/x-wav",
 	}
 
