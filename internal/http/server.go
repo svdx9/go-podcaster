@@ -149,7 +149,7 @@ func getContentType(filename string) string {
 	case strings.HasSuffix(lower, ".aac"):
 		return "audio/aac"
 	case strings.HasSuffix(lower, ".aiff"), strings.HasSuffix(lower, ".aif"):
-		return "audio/aiff"
+		return "audio/x-aiff"
 	case strings.HasSuffix(lower, ".wav"):
 		return "audio/x-wav"
 	default:
