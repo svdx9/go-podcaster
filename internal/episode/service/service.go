@@ -15,11 +15,12 @@ import (
 )
 
 var (
-	ErrMissingTitle       = errors.New("missing title")
-	ErrUnsupportedMedia   = errors.New("unsupported media type")
-	ErrMissingDescription = errors.New("description is required")
-	ErrMissingFile        = errors.New("file is required")
-	ErrFileNotSeekable    = errors.New("file must be seekable")
+	ErrMissingTitle        = errors.New("missing title")
+	ErrZeroDurationEpisode = errors.New("zero duration episode")
+	ErrUnsupportedMedia    = errors.New("unsupported media type")
+	ErrMissingDescription  = errors.New("description is required")
+	ErrMissingFile         = errors.New("file is required")
+	ErrFileNotSeekable     = errors.New("file must be seekable")
 )
 
 // FileStore abstracts file persistence so the service has no direct
@@ -129,6 +130,10 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 	_, seekErr = req.File.Seek(0, io.SeekStart)
 	if seekErr != nil {
 		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
+	}
+
+	if meta.DurationSecs == 0 {
+		return repository.Episode{}, ErrZeroDurationEpisode
 	}
 
 	title := req.Title
