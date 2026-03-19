@@ -32,19 +32,19 @@ func Load() (Config, error) {
 	var cfg Config
 
 	// Required fields
-	cfg.BaseURL = getEnv("BASE_URL", true)
-	cfg.PodcastTitle = getEnv("PODCAST_TITLE", true)
-	cfg.PodcastDescription = getEnv("PODCAST_DESCRIPTION", true)
-	cfg.PodcastAuthor = getEnv("PODCAST_AUTHOR", true)
+	cfg.BaseURL = getEnv("BASE_URL", "")
+	cfg.PodcastTitle = getEnv("PODCAST_TITLE", "")
+	cfg.PodcastDescription = getEnv("PODCAST_DESCRIPTION", "")
+	cfg.PodcastAuthor = getEnv("PODCAST_AUTHOR", "")
 
 	// Optional fields with defaults
 	cfg.Port = getEnvInt("PORT", 8080)
-	cfg.DBPath = getEnv("DB_PATH", false, "./podcast.db")
-	cfg.UploadDir = getEnv("UPLOAD_DIR", false, "./uploads")
-	cfg.PodcastLanguage = getEnv("PODCAST_LANGUAGE", false, "en-us")
-	cfg.PodcastCategory = getEnv("PODCAST_CATEGORY", false, "Technology")
-	cfg.PodcastImageURL = getEnv("PODCAST_IMAGE_URL", false, "")
-	cfg.LogLevel = getEnv("LOG_LEVEL", false, "info")
+	cfg.DBPath = getEnv("DB_PATH", "./podcast.db")
+	cfg.UploadDir = getEnv("UPLOAD_DIR", "./uploads")
+	cfg.PodcastLanguage = getEnv("PODCAST_LANGUAGE", "en-us")
+	cfg.PodcastCategory = getEnv("PODCAST_CATEGORY", "Technology")
+	cfg.PodcastImageURL = getEnv("PODCAST_IMAGE_URL", "")
+	cfg.LogLevel = getEnv("LOG_LEVEL", "info")
 
 	// Validate required fields are not empty
 	err := validateRequired(&cfg)
@@ -56,13 +56,10 @@ func Load() (Config, error) {
 }
 
 // getEnv retrieves an environment variable with optional requirement check.
-func getEnv(key string, required bool, defaults ...string) string {
+func getEnv(key string, defaultVal string) string {
 	val := os.Getenv(key)
-	if val == "" && required {
-		return ""
-	}
-	if val == "" && len(defaults) > 0 {
-		return defaults[0]
+	if val == "" {
+		return defaultVal
 	}
 	return val
 }
