@@ -13,6 +13,10 @@ import (
 	"github.com/svdx9/go-podcaster/internal/episode/service"
 )
 
+var ErrZeroDurationEpisode = errors.New("zero duration episode")
+
+const requestBodyLimit = 32 << 20
+
 type Handler struct {
 	svc *service.Service
 }
@@ -22,7 +26,7 @@ func New(svc *service.Service) *Handler {
 }
 
 func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(32 << 20)
+	err := r.ParseMultipartForm(requestBodyLimit)
 	if err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "failed to parse multipart form")
 		return
