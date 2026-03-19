@@ -70,7 +70,7 @@ func (s *Server) GetFeedXml(w http.ResponseWriter, r *http.Request) {
 	err := s.feedgen.Render(r.Context(), w)
 	if err != nil {
 		slog.Error("failed to render feed", "error", err)
-		s.writeNotInitializedError(w, r)
+		s.writeNoFeedError(w, r)
 	}
 }
 
@@ -125,12 +125,12 @@ func (e *slogLogEntry) Panic(v interface{}, stack []byte) {
 	slog.Error("panic", "value", v, "stack", string(stack))
 }
 
-// writeNotInitializedError writes a JSON error response when system is not initialized
-func (s *Server) writeNotInitializedError(w http.ResponseWriter, r *http.Request) {
+// writeNoFeedError writes a JSON error response when system is not initialized
+func (s *Server) writeNoFeedError(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 
-	errorResponse := `{"error": "not initialised", "message": "The podcast system has not been initialized. Please set up the database and try again."}`
+	errorResponse := `{"error": "no feed", "message": "The podcast system has no feed."}`
 	_, err := w.Write([]byte(errorResponse))
 	if err != nil {
 		slog.Error("failed to write error response", "error", err)
