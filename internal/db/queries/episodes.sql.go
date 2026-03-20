@@ -185,3 +185,56 @@ func (q *Queries) ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]E
 	}
 	return items, nil
 }
+
+const listEpisodesPendingDuration = `-- name: ListEpisodesPendingDuration :many
+SELECT uuid, title, description, author, pub_date, file_path, file_name, file_size, mime_type, duration_secs, created_at FROM episodes WHERE duration_secs = 0
+`
+
+func (q *Queries) ListEpisodesPendingDuration(ctx context.Context) ([]Episode, error) {
+	rows, err := q.db.QueryContext(ctx, listEpisodesPendingDuration)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Episode
+	for rows.Next() {
+		var i Episode
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Title,
+			&i.Description,
+			&i.Author,
+			&i.PubDate,
+			&i.FilePath,
+			&i.FileName,
+			&i.FileSize,
+			&i.MimeType,
+			&i.DurationSecs,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateEpisodeDuration = `-- name: UpdateEpisodeDuration :exec
+UPDATE episodes SET duration_secs = ? WHERE uuid = ?
+`
+
+type UpdateEpisodeDurationParams struct {
+	DurationSecs int64     `json:"duration_secs"`
+	Uuid         uuid.UUID `json:"uuid"`
+}
+
+func (q *Queries) UpdateEpisodeDuration(ctx context.Context, arg UpdateEpisodeDurationParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeDuration, arg.DurationSecs, arg.Uuid)
+	return err
+}

@@ -23,3 +23,9 @@ WHERE uuid = ?;
 -- name: ListAllEpisodes :many
 SELECT * FROM episodes
 ORDER BY pub_date DESC;
+
+-- name: UpdateEpisodeDuration :exec
+UPDATE episodes SET duration_secs = ? WHERE uuid = ?;
+
+-- name: ListEpisodesPendingDuration :many
+SELECT * FROM episodes WHERE duration_secs = 0;
