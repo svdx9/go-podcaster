@@ -53,10 +53,12 @@ func TestRender(t *testing.T) {
 	pubDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2024, 1, 15, 10, 5, 0, 0, time.UTC)
 
+	episodeUUID := uuid.Must(uuid.NewV7())
+
 	repo := &mockRepo{
 		episodes: []repository.Episode{
 			{
-				UUID:         uuid.Must(uuid.NewV7()),
+				UUID:         episodeUUID,
 				Title:        "Test Episode",
 				Description:  "A test episode description",
 				Author:       "Test Author",
@@ -91,8 +93,9 @@ func TestRender(t *testing.T) {
 	if !strings.Contains(xml, "<enclosure") {
 		t.Error("Render() should contain enclosure")
 	}
-	if !strings.Contains(xml, "https://example.com/files/test-uuid-1") {
-		t.Error("Render() should contain enclosure URL")
+	expectedURL := "https://example.com/files/" + episodeUUID.String()
+	if !strings.Contains(xml, expectedURL) {
+		t.Errorf("Render() should contain enclosure URL %s", expectedURL)
 	}
 }
 
