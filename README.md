@@ -42,7 +42,7 @@ curl http://localhost:9871/feed.xml
 ### Download an audio file
 
 ```bash
-curl http://localhost:9871/files/<uuid>/<filename> -o episode.mp3
+curl http://localhost:9871/files/<uuid> -o episode.mp3
 ```
 
 ## Running
