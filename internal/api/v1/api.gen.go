@@ -16,6 +16,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -50,7 +51,7 @@ type Episode struct {
 	Title string `json:"title"`
 
 	// Uuid Unique identifier
-	Uuid openapi_types.UUID `json:"uuid"`
+	Uuid uuid.UUID `json:"uuid"`
 }
 
 // Error defines model for Error.
@@ -101,8 +102,8 @@ type ServerInterface interface {
 	// (GET /feed.xml)
 	GetFeedXml(w http.ResponseWriter, r *http.Request)
 	// Serve audio file
-	// (GET /files/{uuid}/{filename})
-	GetFilesUuidFilename(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID, filename string)
+	// (GET /files/{uuid})
+	GetFilesByUuid(w http.ResponseWriter, r *http.Request, uuid uuid.UUID)
 	// List all podcast episodes
 	// (GET /v1/episodes)
 	GetV1Episodes(w http.ResponseWriter, r *http.Request, params GetV1EpisodesParams)
@@ -111,7 +112,7 @@ type ServerInterface interface {
 	PostV1Episodes(w http.ResponseWriter, r *http.Request)
 	// Delete a podcast episode
 	// (DELETE /v1/episodes/{uuid})
-	DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID)
+	DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid uuid.UUID)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -131,8 +132,8 @@ func (_ Unimplemented) GetFeedXml(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve audio file
-// (GET /files/{uuid}/{filename})
-func (_ Unimplemented) GetFilesUuidFilename(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID, filename string) {
+// (GET /files/{uuid})
+func (_ Unimplemented) GetFilesByUuid(w http.ResponseWriter, r *http.Request, uuid uuid.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -150,7 +151,7 @@ func (_ Unimplemented) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
 
 // Delete a podcast episode
 // (DELETE /v1/episodes/{uuid})
-func (_ Unimplemented) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID) {
+func (_ Unimplemented) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid uuid.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -191,13 +192,13 @@ func (siw *ServerInterfaceWrapper) GetFeedXml(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r)
 }
 
-// GetFilesUuidFilename operation middleware
-func (siw *ServerInterfaceWrapper) GetFilesUuidFilename(w http.ResponseWriter, r *http.Request) {
+// GetFilesByUuid operation middleware
+func (siw *ServerInterfaceWrapper) GetFilesByUuid(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
 	// ------------- Path parameter "uuid" -------------
-	var uuid openapi_types.UUID
+	var uuid uuid.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "uuid", chi.URLParam(r, "uuid"), &uuid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
@@ -205,17 +206,8 @@ func (siw *ServerInterfaceWrapper) GetFilesUuidFilename(w http.ResponseWriter, r
 		return
 	}
 
-	// ------------- Path parameter "filename" -------------
-	var filename string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "filename", chi.URLParam(r, "filename"), &filename, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "filename", Err: err})
-		return
-	}
-
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetFilesUuidFilename(w, r, uuid, filename)
+		siw.Handler.GetFilesByUuid(w, r, uuid)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -280,7 +272,7 @@ func (siw *ServerInterfaceWrapper) DeleteV1EpisodesUuid(w http.ResponseWriter, r
 	var err error
 
 	// ------------- Path parameter "uuid" -------------
-	var uuid openapi_types.UUID
+	var uuid uuid.UUID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "uuid", chi.URLParam(r, "uuid"), &uuid, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
 	if err != nil {
@@ -419,7 +411,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/feed.xml", wrapper.GetFeedXml)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/files/{uuid}/{filename}", wrapper.GetFilesUuidFilename)
+		r.Get(options.BaseURL+"/files/{uuid}", wrapper.GetFilesByUuid)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/v1/episodes", wrapper.GetV1Episodes)
@@ -437,26 +429,26 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"eHQlfQPw9dX6rwAAAP//wFOlx6kRAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

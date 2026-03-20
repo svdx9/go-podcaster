@@ -151,9 +151,9 @@ paths:
               schema:
                 type: string
 
-  /files/{uuid}/{filename}:
+  /files/{uuid}:
     get:
-      operationId: GetFilesUuidFilename
+      operationId: GetFilesByUuid
       summary: Serve audio file
       parameters:
         - name: uuid
@@ -162,11 +162,6 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: filename
-          in: path
-          required: true
-          schema:
-            type: string
       responses:
         "200":
           description: Audio file
