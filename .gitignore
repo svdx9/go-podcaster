@@ -1,8 +1,8 @@
-tools/bin/
+./tools/bin/
 *.db
-uploads/
-tmp/
-bin/
-db/
+./uploads/
+./tmp/
+./bin/
 coverage.out
-server
+./server
+db/*
