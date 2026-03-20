@@ -125,12 +125,16 @@ func (g *Generator) episodeToItem(ep repository.Episode) Item {
 		Description: ep.Description,
 		PubDate:     pubDate,
 		Author:      ep.Author,
-		Duration:    formatDuration(ep.DurationSecs),
+		Duration:    "",
 		Enclosure: Enclosure{
 			URL:    fmt.Sprintf("%s/files/%s", g.baseURL, ep.UUID),
 			Length: ep.FileSize,
 			Type:   ep.MimeType,
 		},
+	}
+
+	if ep.DurationSecs > 0 {
+		item.Duration = formatDuration(ep.DurationSecs)
 	}
 
 	return item
