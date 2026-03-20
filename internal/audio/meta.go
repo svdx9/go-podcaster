@@ -31,7 +31,7 @@ type ffprobeOutput struct {
 func Extract(r io.ReadSeeker) (Meta, error) {
 	meta := Meta{}
 
-	metadata, err := readTags(r)
+	metadata, err := ReadTags(r)
 	if err != nil {
 		return meta, err
 	}
@@ -43,7 +43,7 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 		return meta, fmt.Errorf("failed to seek file for duration extraction: %w", err)
 	}
 
-	secs, err := ffprobeDuration(r)
+	secs, err := ProbeDuration(r)
 	if err != nil {
 		return meta, fmt.Errorf("failed to extract duration: %w", err)
 	}
@@ -52,12 +52,7 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 	return meta, nil
 }
 
-type tagResult struct {
-	title  string
-	artist string
-}
-
-func readTags(r io.ReadSeeker) (tagResult, error) {
+func ReadTags(r io.ReadSeeker) (tagResult, error) {
 	result := tagResult{}
 
 	metadata, err := tag.ReadFrom(r)
@@ -76,6 +71,15 @@ func readTags(r io.ReadSeeker) (tagResult, error) {
 	}
 
 	return result, nil
+}
+
+func ProbeDuration(r io.Reader) (int, error) {
+	return ffprobeDuration(r)
+}
+
+type tagResult struct {
+	title  string
+	artist string
 }
 
 // ffprobeDuration writes r to a temp file, runs ffprobe, and returns duration in seconds.
