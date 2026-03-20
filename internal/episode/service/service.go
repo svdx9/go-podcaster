@@ -131,11 +131,7 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		return repository.Episode{}, fmt.Errorf("failed to insert episode: %w", err)
 	}
 
-	select {
-	case s.probeQueue <- probeJob{UUID: episode.UUID}:
-	default:
-		s.logger.Warn("probe queue full, duration will remain 0", "uuid", episode.UUID)
-	}
+	s.EnqueueProbe(episode.UUID)
 
 	return episode, nil
 }
@@ -186,6 +182,14 @@ func (s *Service) StartBackgroundProbe(ctx context.Context) {
 			}
 		}
 	}()
+}
+
+func (s *Service) EnqueueProbe(UUID uuid.UUID) {
+	select {
+	case s.probeQueue <- probeJob{UUID: UUID}:
+	default:
+		s.logger.Warn("probe queue full, cannot enqueue", "uuid", UUID)
+	}
 }
 
 func (s *Service) processProbeJob(ctx context.Context, job probeJob) {

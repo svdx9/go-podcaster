@@ -31,4 +31,5 @@ type Repository interface {
 	Delete(ctx context.Context, UUID uuid.UUID) error
 	ListAll(ctx context.Context) ([]Episode, error)
 	UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error
+	ListPendingDuration(ctx context.Context) ([]Episode, error)
 }

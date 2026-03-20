@@ -87,6 +87,14 @@ func (r *EpisodeRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, 
 	})
 }
 
+func (r *EpisodeRepository) ListPendingDuration(ctx context.Context) ([]repository.Episode, error) {
+	episodes, err := r.q.ListEpisodesPendingDuration(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainEpisodes(episodes)
+}
+
 func toDomainEpisode(ep queries.Episode) (repository.Episode, error) {
 	d := repository.Episode{
 		UUID:         ep.Uuid,

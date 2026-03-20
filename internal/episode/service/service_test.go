@@ -65,6 +65,10 @@ func (m *mockRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, dur
 	return m.err
 }
 
+func (m *mockRepository) ListPendingDuration(ctx context.Context) ([]repository.Episode, error) {
+	return nil, m.err
+}
+
 type memFileStore struct{}
 
 func (m *memFileStore) Save(r io.Reader) (uuid.UUID, int64, error) {
