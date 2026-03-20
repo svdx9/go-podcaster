@@ -35,8 +35,8 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 	if err != nil {
 		return meta, err
 	}
-	meta.Title = metadata.title
-	meta.Artist = metadata.artist
+	meta.Title = metadata.Title
+	meta.Artist = metadata.Artist
 
 	_, err = r.Seek(0, io.SeekStart)
 	if err != nil {
@@ -52,8 +52,8 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 	return meta, nil
 }
 
-func ReadTags(r io.ReadSeeker) (tagResult, error) {
-	result := tagResult{}
+func ReadTags(r io.ReadSeeker) (Tags, error) {
+	result := Tags{}
 
 	metadata, err := tag.ReadFrom(r)
 	if err != nil {
@@ -63,11 +63,11 @@ func ReadTags(r io.ReadSeeker) (tagResult, error) {
 		return result, err
 	}
 
-	result.title = metadata.Title()
-	result.artist = metadata.Artist()
+	result.Title = metadata.Title()
+	result.Artist = metadata.Artist()
 
-	if result.title == "" {
-		result.title = metadata.Album()
+	if result.Title == "" {
+		result.Title = metadata.Album()
 	}
 
 	return result, nil
@@ -77,9 +77,9 @@ func ProbeDuration(r io.Reader) (int, error) {
 	return ffprobeDuration(r)
 }
 
-type tagResult struct {
-	title  string
-	artist string
+type Tags struct {
+	Title  string
+	Artist string
 }
 
 // ffprobeDuration writes r to a temp file, runs ffprobe, and returns duration in seconds.

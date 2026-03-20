@@ -15,13 +15,11 @@ import (
 )
 
 var (
-	ErrMissingTitle        = errors.New("missing title")
-	ErrZeroDurationEpisode = errors.New("zero duration episode")
-	ErrUnsupportedMedia    = errors.New("unsupported media type")
-	ErrMissingDescription  = errors.New("description is required")
-	ErrMissingFile         = errors.New("file is required")
-	ErrFileNotSeekable     = errors.New("file must be seekable")
-	ErrFfprobeNotFound     = errors.New("ffprobe not found on PATH")
+	ErrMissingTitle       = errors.New("missing title")
+	ErrUnsupportedMedia   = errors.New("unsupported media type")
+	ErrMissingDescription = errors.New("description is required")
+	ErrMissingFile        = errors.New("file is required")
+	ErrFileNotSeekable    = errors.New("file must be seekable")
 )
 
 type UploadRequest struct {
@@ -71,21 +69,14 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		return repository.Episode{}, ErrUnsupportedMedia
 	}
 
-	meta, err := audio.Extract(req.File)
+	meta, err := audio.ReadTags(req.File)
 	if err != nil {
-		if errors.Is(err, audio.ErrFfprobeNotFound) {
-			return repository.Episode{}, ErrFfprobeNotFound
-		}
-		return repository.Episode{}, fmt.Errorf("failed to extract metadata: %w", err)
+		return repository.Episode{}, fmt.Errorf("failed to read tags: %w", err)
 	}
 	s.logger.Debug("meta_extraction", "meta", meta)
 	_, seekErr = req.File.Seek(0, io.SeekStart)
 	if seekErr != nil {
 		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
-	}
-
-	if meta.DurationSecs == 0 {
-		return repository.Episode{}, ErrZeroDurationEpisode
 	}
 
 	title := req.Title
@@ -120,7 +111,7 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		FileName:     req.Filename,
 		FileSize:     written,
 		MimeType:     mime,
-		DurationSecs: meta.DurationSecs,
+		DurationSecs: 0,
 		CreatedAt:    time.Now(),
 	}
 
