@@ -12,6 +12,7 @@ import (
 	"github.com/svdx9/go-podcaster/internal/episode/api"
 	"github.com/svdx9/go-podcaster/internal/episode/service"
 	"github.com/svdx9/go-podcaster/internal/feed"
+	"github.com/svdx9/go-podcaster/internal/file"
 	"github.com/svdx9/go-podcaster/internal/http"
 )
 
@@ -39,12 +40,17 @@ func main() {
 
 	episodeRepo := db.NewEpisodeRepository(database)
 
-	svc := service.New(episodeRepo, service.NewLocalFileStore(cfg.UploadDir))
+	// initialize file store
+	fileStore := file.NewStore(cfg.UploadDir)
+	err = fileStore.Init()
+	if err != nil {
+		log.Fatalf("failed to initialize file store: %v", err)
+	}
 
+	svc := service.New(episodeRepo, fileStore)
 	handler := api.New(svc)
 
 	baseUrl, err := cfg.BaseURLWithPort()
-
 	if err != nil {
 		log.Fatalf("failed to get base URL: %v", err)
 	}
