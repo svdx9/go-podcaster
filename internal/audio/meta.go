@@ -18,7 +18,7 @@ func Extract(r io.ReadSeeker) (Meta, error) {
 
 	metadata, err := tag.ReadFrom(r)
 	if err != nil {
-		if errors.Is(err, tag.ErrNoTagsFound) {
+		if errors.Is(err, tag.ErrNoTagsFound) || errors.Is(err, io.EOF) {
 			return meta, nil
 		}
 		return meta, err
