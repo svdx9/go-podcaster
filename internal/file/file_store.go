@@ -72,19 +72,15 @@ func (l *LocalStore) Save(r io.Reader) (uuid.UUID, int64, error) {
 		return uuid.Nil, 0, fmt.Errorf("%w: %w", ErrFileClose, err)
 	}
 
-	// compute hash
-	new, err := uuid.NewV7()
-	if err != nil {
-		return uuid.Nil, 0, fmt.Errorf("%w: %w", ErrFileCreate, err)
-	}
-	uuid := uuid.NewSHA1(new, hash.Sum(nil))
+	// content-addressable: same content → same UUID
+	id := uuid.NewSHA1(uuid.NameSpaceURL, hash.Sum(nil))
 
-	uuidPath := filepath.Join(l.uploadDir, uuid.String())
-	err = os.Rename(tmpFile.Name(), uuidPath)
+	idPath := filepath.Join(l.uploadDir, id.String())
+	err = os.Rename(tmpFile.Name(), idPath)
 	if err != nil {
-		return uuid, writtenBytes, fmt.Errorf("%w: %w", ErrFileCreate, err)
+		return id, writtenBytes, fmt.Errorf("%w: %w", ErrFileCreate, err)
 	}
-	return uuid, writtenBytes, nil
+	return id, writtenBytes, nil
 }
 
 func (l *LocalStore) Delete(uuid uuid.UUID) error {
