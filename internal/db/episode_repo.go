@@ -13,12 +13,12 @@ import (
 type DBTX = queries.DBTX
 
 type EpisodeRepository struct {
-	q *queries.Queries
+	q queries.Querier
 }
 
-func NewEpisodeRepository(db DBTX) *EpisodeRepository {
+func NewEpisodeRepository(querier queries.Querier) *EpisodeRepository {
 	return &EpisodeRepository{
-		q: queries.New(db),
+		q: querier,
 	}
 }
 

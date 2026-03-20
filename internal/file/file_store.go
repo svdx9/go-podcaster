@@ -2,6 +2,7 @@ package file
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,12 +12,12 @@ import (
 )
 
 var (
-	ErrFileNotFound  = fmt.Errorf("file does not exist")
-	ErrInitFailed    = fmt.Errorf("failed to initialize file store")
-	ErrFileCreate    = fmt.Errorf("failed to create file")
-	ErrFileClose     = fmt.Errorf("failed to close file")
-	ErrFileDelete    = fmt.Errorf("failed to delete file")
-	ErrTmpFileCreate = fmt.Errorf("failed to create temp file")
+	ErrFileNotFound  = errors.New("file does not exist")
+	ErrInitFailed    = errors.New("failed to initialize file store")
+	ErrFileCreate    = errors.New("failed to create file")
+	ErrFileClose     = errors.New("failed to close file")
+	ErrFileDelete    = errors.New("failed to delete file")
+	ErrTmpFileCreate = errors.New("failed to create temp file")
 )
 
 // Store abstracts file persistence so the service has no direct
@@ -66,7 +67,10 @@ func (l *LocalStore) Save(r io.Reader) (uuid.UUID, int64, error) {
 	if err != nil {
 		return uuid.Nil, 0, fmt.Errorf("%w: %w", ErrFileCreate, err)
 	}
-	tmpFile.Close()
+	err = tmpFile.Close()
+	if err != nil {
+		return uuid.Nil, 0, fmt.Errorf("%w: %w", ErrFileClose, err)
+	}
 
 	// compute hash
 	new, err := uuid.NewV7()
@@ -101,6 +105,6 @@ func (s *LocalStore) ReadSeekFile(u uuid.UUID, fn func(io.ReadSeeker) error) err
 		}
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return fn(f)
 }

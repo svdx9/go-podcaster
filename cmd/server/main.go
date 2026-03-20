@@ -38,7 +38,8 @@ func main() {
 		}
 	}()
 
-	episodeRepo := db.NewEpisodeRepository(database)
+	querier := db.NewQuerier(database)
+	episodeRepo := db.NewEpisodeRepository(querier)
 
 	// initialize file store
 	fileStore := file.NewStore(cfg.UploadDir)
@@ -66,7 +67,7 @@ func main() {
 		cfg.PodcastImageURL,
 	)
 
-	server := http.New(cfg, handler, feedGen)
+	server := http.New(cfg, handler, feedGen, querier, fileStore)
 
 	err = server.Start(ctx)
 	if err != nil {

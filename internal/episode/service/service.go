@@ -108,6 +108,7 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		Description:  req.Description,
 		Author:       req.Author,
 		PubDate:      pubDate,
+		FilePath:     "",
 		FileName:     req.Filename,
 		FileSize:     written,
 		MimeType:     mime,

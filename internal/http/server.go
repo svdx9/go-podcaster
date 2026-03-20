@@ -33,12 +33,14 @@ type Server struct {
 	querier   queries.Querier
 }
 
-func New(cfg config.Config, episodeHandler *episodeHandler.Handler, feedGen *feed.Generator) *Server {
-	s := &Server{
-		Handler: episodeHandler,
-		cfg:     cfg,
-		server:  nil,
-		feedgen: feedGen,
+func New(cfg config.Config, episodeHandler *episodeHandler.Handler, feedGen *feed.Generator, querier queries.Querier, fileStore file.Store) *Server {
+	s := &Server{ //nolint:exhaustruct
+		Handler:   episodeHandler,
+		cfg:       cfg,
+		server:    nil,
+		feedgen:   feedGen,
+		fileStore: fileStore,
+		querier:   querier,
 	}
 
 	r := chi.NewRouter()
@@ -89,11 +91,14 @@ func (s *Server) GetFilesByUuid(w http.ResponseWriter, r *http.Request, UUID uui
 	}
 	cb := func(file io.ReadSeeker) error {
 		w.Header().Set("Content-Type", episode.MimeType)
-		http.ServeContent(w, r, "", episode.CreatedAt, file)
+		http.ServeContent(w, r, episode.Uuid.String(), episode.CreatedAt, file)
 		return nil
 	}
 
-	s.fileStore.ReadSeekFile(UUID, cb)
+	err = s.fileStore.ReadSeekFile(UUID, cb)
+	if err != nil {
+		slog.Error("failed to read file", "error", err)
+	}
 
 }
 

@@ -67,13 +67,16 @@ type memFileStore struct{}
 func (m *memFileStore) Save(r io.Reader) (uuid.UUID, int64, error) {
 	hash := sha256.New()
 	writer := io.MultiWriter(hash, io.Discard)
-	n, err := io.Copy(writer, r)
+	writtenBytes, err := io.Copy(writer, r)
+	if err != nil {
+		return uuid.Nil, 0, fmt.Errorf("%w: %w", file.ErrFileCreate, err)
+	}
 	new, err := uuid.NewV7()
 	if err != nil {
 		return uuid.Nil, 0, fmt.Errorf("%w: %w", file.ErrFileCreate, err)
 	}
 	uuid := uuid.NewSHA1(new, hash.Sum(nil))
-	return uuid, n, nil
+	return uuid, writtenBytes, nil
 }
 
 func (m *memFileStore) Delete(uuid uuid.UUID) error                                     { return nil }

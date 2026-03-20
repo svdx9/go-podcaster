@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/svdx9/go-podcaster/internal/db/queries"
 	_ "modernc.org/sqlite"
 )
 
@@ -33,4 +34,8 @@ func Open(ctx context.Context, dbPath string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func NewQuerier(db *sql.DB) queries.Querier {
+	return queries.New(db)
 }
