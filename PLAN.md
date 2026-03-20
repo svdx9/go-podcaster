@@ -8,25 +8,24 @@ SQLite metadata persistence, audio file serving, and an iTunes-compatible `/feed
 
 ## Step 1: Scaffold & Module Init
 
-- [ ] Create `backend/` directory tree (all internal packages, cmd, sql, tools, docs/schema)
-- [ ] Run `go mod init` in `backend/`
-- [ ] Create `backend/Makefile` with all targets: `tools-dir`, `tools-install`, `generate`,
+- [x] Run `go mod init` in `/`
+- [x] Create `Makefile` with all targets: `tools-dir`, `tools-install`, `generate`,
       `migrate-up`, `migrate-down`, `build`, `test`, `lint`, `fmt`, `dev`
-- [ ] Create `backend/.air.toml` for hot reload
-- [ ] Create `backend/.gitignore` (ignore `tools/bin/`, `*.db`, `uploads/`)
+- [x] Create `.air.toml` for hot reload
+- [x] Create `.gitignore` (ignore `tools/bin/`, `*.db`, `uploads/`)
 
 ---
 
 ## Step 2: OpenAPI Spec + oapi-codegen Config
 
 **Files:**
-- `docs/schema/v1/podcast.yaml` — OpenAPI 3.1 spec with all 5 endpoints:
+- [x] `docs/schema/v1/podcast.yaml` — OpenAPI 3.1 spec with all 5 endpoints:
   - `POST /v1/episodes`
   - `GET /v1/episodes`
   - `DELETE /v1/episodes/{uuid}`
   - `GET /feed.xml`
   - `GET /files/{uuid}/{filename}`
-- `docs/schema/v1/config.yaml` — oapi-codegen generation config
+- [x] `docs/schema/v1/config.yaml` — oapi-codegen generation config
   - `package: api`
   - `generate: chi-server: true, models: true, embedded-spec: true`
   - `output: internal/api/v1/api.gen.go`
@@ -42,8 +41,8 @@ SQLite metadata persistence, audio file serving, and an iTunes-compatible `/feed
 ## Step 3: Database Migrations
 
 **Files:**
-- `backend/sql/migrations/000001_create_episodes.up.sql`
-- `backend/sql/migrations/000001_create_episodes.down.sql`
+- [x] `sql/migrations/000001_create_episodes.up.sql`
+- [x] `sql/migrations/000001_create_episodes.down.sql`
 
 **Schema:**
 ```sql
@@ -67,8 +66,8 @@ CREATE TABLE episodes (
 ## Step 4: sqlc Queries + Config
 
 **Files:**
-- `backend/sqlc.yaml` — dialect: sqlite, engine: modernc, output to `internal/db/queries/`
-- `backend/sql/queries/episodes.sql` — named queries:
+- [x] `sqlc.yaml` — dialect: sqlite, engine: modernc, output to `internal/db/queries/`
+- [x] `sql/queries/episodes.sql` — named queries:
   - `InsertEpisode`
   - `GetEpisodeByUUID`
   - `ListEpisodes` (with `LIMIT`/`OFFSET`)
@@ -79,7 +78,7 @@ CREATE TABLE episodes (
 
 ## Step 5: Config Package
 
-**File:** `backend/internal/config/config.go`
+**File:** `internal/config/config.go`
 
 - Struct with all fields typed (no raw strings outside this package)
 - `Load() (Config, error)` — reads all env vars, validates required ones, applies defaults
@@ -87,42 +86,42 @@ CREATE TABLE episodes (
   or `PODCAST_AUTHOR` are missing
 - `Redacted() string` method for safe diagnostic logging
 
-| Env Var | Required | Default |
-|---------|----------|---------|
-| `PORT` | No | `8080` |
-| `DB_PATH` | No | `./podcast.db` |
-| `UPLOAD_DIR` | No | `./uploads` |
-| `BASE_URL` | Yes | — |
-| `PODCAST_TITLE` | Yes | — |
-| `PODCAST_DESCRIPTION` | Yes | — |
-| `PODCAST_AUTHOR` | Yes | — |
-| `PODCAST_LANGUAGE` | No | `en-us` |
-| `PODCAST_CATEGORY` | No | `Technology` |
-| `PODCAST_IMAGE_URL` | No | — |
-| `LOG_LEVEL` | No | `info` |
+| Env Var               | Required | Default        |
+| --------------------- | -------- | -------------- |
+| `PORT`                | No       | `8080`         |
+| `DB_PATH`             | No       | `./podcast.db` |
+| `UPLOAD_DIR`          | No       | `./uploads`    |
+| `BASE_URL`            | Yes      | —              |
+| `PODCAST_TITLE`       | Yes      | —              |
+| `PODCAST_DESCRIPTION` | Yes      | —              |
+| `PODCAST_AUTHOR`      | Yes      | —              |
+| `PODCAST_LANGUAGE`    | No       | `en-us`        |
+| `PODCAST_CATEGORY`    | No       | `Technology`   |
+| `PODCAST_IMAGE_URL`   | No       | —              |
+| `LOG_LEVEL`           | No       | `info`         |
 
 ---
 
 ## Step 6: DB Package (SQLite Open + sqlc wiring)
 
 **Files:**
-- `backend/internal/db/db.go`
+- `internal/db/db.go`
   - `Open(ctx, dbPath) (*sql.DB, error)` — opens SQLite via `modernc.org/sqlite`, pings
   - Enables WAL mode and foreign keys via PRAGMA
-- `backend/internal/db/queries/` — sqlc-generated (do not edit)
+- `internal/db/queries/` — sqlc-generated (do not edit)
 
 ---
 
 ## Step 7: Audio Package
 
 **Files:**
-- `backend/internal/audio/validate.go`
+- `internal/audio/validate.go`
   - `AllowedMIMETypes` sentinel set
   - `DetectMIME(data []byte, filename string) (string, error)` — magic-byte detection via
     `net/http.DetectContentType` cross-checked against file extension
   - Returns error if MIME not in allowlist
 
-- `backend/internal/audio/meta.go`
+- `internal/audio/meta.go`
   - `Meta` struct: `Title`, `Artist`, `DurationSecs`
   - `Extract(r io.ReadSeeker) (Meta, error)` — uses `github.com/dhowden/tag`
   - Gracefully handles files with no tags (returns zero-value Meta, no error)
@@ -136,7 +135,7 @@ CREATE TABLE episodes (
 ## Step 8: Episode Repository Interface + DB Implementation
 
 **Files:**
-- `backend/internal/episode/repository/repository.go`
+- `internal/episode/repository/repository.go`
   - `Repository` interface (owned by feature):
     ```go
     type Repository interface {
@@ -150,7 +149,7 @@ CREATE TABLE episodes (
   - `Episode` domain struct (mirrors DB columns; no DB types in signature)
   - `var ErrNotFound = errors.New("not found")`
 
-- `backend/internal/db/episode_repo.go` — implements `repository.Repository` using sqlc queries
+- `internal/db/episode_repo.go` — implements `repository.Repository` using sqlc queries
   - Maps sqlc-generated types ↔ domain `Episode`
   - Wraps `sql.ErrNoRows` as `repository.ErrNotFound`
 
@@ -158,7 +157,7 @@ CREATE TABLE episodes (
 
 ## Step 9: Episode Service
 
-**File:** `backend/internal/episode/service/service.go`
+**File:** `internal/episode/service/service.go`
 
 - `Service` struct with `Repository`, `UploadDir` injected
 - Methods (all accept `context.Context`):
@@ -182,7 +181,7 @@ CREATE TABLE episodes (
 
 ## Step 10: Episode HTTP Handlers + DTO Mapping
 
-**File:** `backend/internal/episode/api/handler.go`
+**File:** `internal/episode/api/handler.go`
 
 - Implements `oapi-codegen`-generated `StrictServerInterface`
 - `Handler` struct with injected `*service.Service`
@@ -201,7 +200,7 @@ CREATE TABLE episodes (
 
 ## Step 11: Feed Package
 
-**File:** `backend/internal/feed/feed.go`
+**File:** `internal/feed/feed.go`
 
 - iTunes RSS 2.0 structs with correct `encoding/xml` tags:
   - `Channel`, `Item`, `Enclosure`, `ItunesImage`
@@ -219,7 +218,7 @@ CREATE TABLE episodes (
 
 ## Step 12: HTTP Server Wiring
 
-**File:** `backend/internal/http/server.go`
+**File:** `internal/http/server.go`
 
 - `New(cfg, episodeHandler, feedGen) *Server`
 - chi router with:
@@ -233,7 +232,7 @@ CREATE TABLE episodes (
 
 ## Step 13: Composition Root
 
-**File:** `backend/cmd/server/main.go`
+**File:** `cmd/server/main.go`
 
 - `main()`:
   1. `config.Load()`
@@ -270,10 +269,10 @@ Dev/tools (installed via `make tools-install`, NOT in go.mod):
 ## Step 15: Tests
 
 **Files to create:**
-- `backend/internal/audio/validate_test.go` — table-driven: allowed/rejected MIME types
-- `backend/internal/audio/meta_test.go` — extract from fixture file with/without tags
-- `backend/internal/feed/feed_test.go` — render with known episodes, assert XML shape
-- `backend/internal/episode/service/service_test.go` — mock repository; test upload validation rules
+- `internal/audio/validate_test.go` — table-driven: allowed/rejected MIME types
+- `internal/audio/meta_test.go` — extract from fixture file with/without tags
+- `internal/feed/feed_test.go` — render with known episodes, assert XML shape
+- `internal/episode/service/service_test.go` — mock repository; test upload validation rules
 
 ---
 
@@ -305,3 +304,13 @@ http/server.go
 ```
 
 `episode/` MUST NOT import `internal/db` directly.
+
+# TODO
+
+Change the openapi spec:
+
+OpenAPI 3.1 spec from this:
+  - `GET /files/{uuid}/{filename}`
+to this:
+  - `GET /files/{uuid}`
+

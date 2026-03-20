@@ -1,0 +1,8 @@
+tools/*
+*.db
+uploads/*
+tmp/*
+bin/*
+coverage.out
+./server
+db/*

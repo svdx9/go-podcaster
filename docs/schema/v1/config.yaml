@@ -1,0 +1,13 @@
+package: api
+generate:
+  chi-server: true
+  models: true
+  embedded-spec: true
+output-options:
+  type-mapping:
+    string:
+      formats:
+        uuid:
+          type: uuid.UUID
+          import: github.com/google/uuid
+output: internal/api/v1/api.gen.go

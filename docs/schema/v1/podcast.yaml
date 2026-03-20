@@ -1,0 +1,239 @@
+openapi: 3.0.1
+info:
+  title: Go Podcast RSS Backend
+  version: v1
+  description: HTTP server to manage podcast episodes with audio upload, delete, list, SQLite metadata persistence, audio file serving, and iTunes-compatible /feed.xml
+
+servers:
+  - url: /
+    description: Current server
+
+paths:
+  /:
+    get:
+      operationId: GetRoot
+      summary: Redirect to RSS feed
+      responses:
+        "301":
+          description: Permanent redirect to /feed.xml
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /feed.xml
+
+  /v1/episodes:
+    post:
+      operationId: PostV1Episodes
+      summary: Upload a new podcast episode
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: Episode title
+                description:
+                  type: string
+                  description: Episode description (required)
+                author:
+                  type: string
+                  description: Episode author
+                pub_date:
+                  type: string
+                  format: date-time
+                  description: Publication date
+                file:
+                  type: string
+                  format: binary
+                  description: Audio file (required)
+              required:
+                - description
+                - file
+      responses:
+        "201":
+          description: Episode created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "400":
+          description: Bad request - missing title or invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: Unsupported media type - invalid file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      operationId: GetV1Episodes
+      summary: List all podcast episodes
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of episodes to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of episodes to skip
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        "200":
+          description: List of episodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Episode"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /v1/episodes/{uuid}:
+    delete:
+      operationId: DeleteV1EpisodesUuid
+      summary: Delete a podcast episode
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Episode deleted successfully
+        "404":
+          description: Episode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /feed.xml:
+    get:
+      operationId: GetFeedXml
+      summary: Get iTunes-compatible RSS feed
+      responses:
+        "200":
+          description: RSS feed
+          content:
+            application/xml:
+              schema:
+                type: string
+
+  /files/{uuid}:
+    get:
+      operationId: GetFilesByUuid
+      summary: Serve audio file
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Audio file
+          content:
+            audio/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+      required:
+        - code
+        - message
+
+    Episode:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier
+        title:
+          type: string
+          description: Episode title
+        description:
+          type: string
+          description: Episode description
+        author:
+          type: string
+          description: Episode author
+        pub_date:
+          type: string
+          format: date-time
+          description: Publication date
+        file_name:
+          type: string
+          description: Original file name
+        file_size:
+          type: integer
+          description: File size in bytes
+        mime_type:
+          type: string
+          description: MIME type
+        duration_secs:
+          type: integer
+          description: Duration in seconds
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+      required:
+        - uuid
+        - title
+        - description
+        - pub_date
+        - file_name
+        - file_size
+        - mime_type
+        - created_at
