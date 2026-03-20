@@ -21,6 +21,7 @@ var (
 	ErrMissingDescription  = errors.New("description is required")
 	ErrMissingFile         = errors.New("file is required")
 	ErrFileNotSeekable     = errors.New("file must be seekable")
+	ErrFfprobeNotFound     = errors.New("ffprobe not found on PATH")
 )
 
 type UploadRequest struct {
@@ -72,6 +73,9 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 
 	meta, err := audio.Extract(req.File)
 	if err != nil {
+		if errors.Is(err, audio.ErrFfprobeNotFound) {
+			return repository.Episode{}, ErrFfprobeNotFound
+		}
 		return repository.Episode{}, fmt.Errorf("failed to extract metadata: %w", err)
 	}
 	s.logger.Debug("meta_extraction", "meta", meta)
@@ -80,10 +84,9 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
 	}
 
-	// if meta.DurationSecs == 0 {
-	// TODO: need better meta data extraction, so don't error here for now
-	// return repository.Episode{}, ErrZeroDurationEpisode
-	// }
+	if meta.DurationSecs == 0 {
+		return repository.Episode{}, ErrZeroDurationEpisode
+	}
 
 	title := req.Title
 	if title == "" {

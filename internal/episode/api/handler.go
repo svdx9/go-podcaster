@@ -124,8 +124,16 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "missing_title", "title is required")
 		return
 	}
+	if errors.Is(err, service.ErrZeroDurationEpisode) {
+		h.writeError(w, http.StatusBadRequest, "invalid_audio", "could not determine audio duration")
+		return
+	}
 	if errors.Is(err, service.ErrUnsupportedMedia) {
 		h.writeError(w, 415, "unsupported_media", "file type not supported")
+		return
+	}
+	if errors.Is(err, service.ErrFfprobeNotFound) {
+		h.writeError(w, http.StatusInternalServerError, "server_error", "audio processing not available")
 		return
 	}
 	h.logger.Error("failed to handle service error", "error", err)

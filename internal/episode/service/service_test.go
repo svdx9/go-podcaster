@@ -15,9 +15,7 @@ import (
 	"github.com/svdx9/go-podcaster/internal/file"
 )
 
-var (
-	errTestRead = errors.New("read error")
-)
+var errTestRead = errors.New("read error")
 
 type mockRepository struct {
 	episodes []repository.Episode
@@ -61,6 +59,10 @@ func (m *mockRepository) Delete(ctx context.Context, UUID uuid.UUID) error {
 
 func (m *mockRepository) ListAll(ctx context.Context) ([]repository.Episode, error) {
 	return m.episodes, m.err
+}
+
+func (m *mockRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error {
+	return m.err
 }
 
 type memFileStore struct{}

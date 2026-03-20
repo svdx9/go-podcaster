@@ -48,6 +48,10 @@ func (m *mockRepo) ListAll(ctx context.Context) ([]repository.Episode, error) {
 	return m.episodes, m.err
 }
 
+func (m *mockRepo) UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error {
+	return m.err
+}
+
 func TestRender(t *testing.T) {
 	t.Parallel()
 	pubDate := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)

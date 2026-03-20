@@ -80,6 +80,13 @@ func (r *EpisodeRepository) ListAll(ctx context.Context) ([]repository.Episode, 
 	return toDomainEpisodes(episodes)
 }
 
+func (r *EpisodeRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error {
+	return r.q.UpdateEpisodeDuration(ctx, queries.UpdateEpisodeDurationParams{
+		DurationSecs: int64(durationSecs),
+		Uuid:         UUID,
+	})
+}
+
 func toDomainEpisode(ep queries.Episode) (repository.Episode, error) {
 	d := repository.Episode{
 		UUID:         ep.Uuid,

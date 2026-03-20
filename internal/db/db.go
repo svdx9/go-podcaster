@@ -10,6 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// TODO: use the sql/schema file to create the schema
 const createTables = `
 	CREATE TABLE episodes (
 	uuid          TEXT PRIMARY KEY,

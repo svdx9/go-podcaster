@@ -1,11 +1,20 @@
 package audio
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"os"
+	"os/exec"
+	"strconv"
 
 	"github.com/dhowden/tag"
 )
+
+// ErrFfprobeNotFound is returned when ffprobe is not available on PATH.
+var ErrFfprobeNotFound = errors.New("ffprobe not found on PATH")
 
 type Meta struct {
 	Title        string
@@ -13,23 +22,112 @@ type Meta struct {
 	DurationSecs int
 }
 
+type ffprobeOutput struct {
+	Format struct {
+		Duration string `json:"duration"`
+	} `json:"format"`
+}
+
 func Extract(r io.ReadSeeker) (Meta, error) {
 	meta := Meta{}
+
+	metadata, err := readTags(r)
+	if err != nil {
+		return meta, err
+	}
+	meta.Title = metadata.title
+	meta.Artist = metadata.artist
+
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return meta, fmt.Errorf("failed to seek file for duration extraction: %w", err)
+	}
+
+	secs, err := ffprobeDuration(r)
+	if err != nil {
+		return meta, fmt.Errorf("failed to extract duration: %w", err)
+	}
+	meta.DurationSecs = secs
+
+	return meta, nil
+}
+
+type tagResult struct {
+	title  string
+	artist string
+}
+
+func readTags(r io.ReadSeeker) (tagResult, error) {
+	result := tagResult{}
 
 	metadata, err := tag.ReadFrom(r)
 	if err != nil {
 		if errors.Is(err, tag.ErrNoTagsFound) || errors.Is(err, io.EOF) {
-			return meta, nil
+			return result, nil
 		}
-		return meta, err
+		return result, err
 	}
 
-	meta.Title = metadata.Title()
-	meta.Artist = metadata.Artist()
+	result.title = metadata.Title()
+	result.artist = metadata.Artist()
 
-	if meta.Title == "" {
-		meta.Title = metadata.Album()
+	if result.title == "" {
+		result.title = metadata.Album()
 	}
 
-	return meta, nil
+	return result, nil
+}
+
+// ffprobeDuration writes r to a temp file, runs ffprobe, and returns duration in seconds.
+func ffprobeDuration(r io.Reader) (int, error) {
+	_, err := exec.LookPath("ffprobe")
+	if err != nil {
+		return 0, ErrFfprobeNotFound
+	}
+
+	tmp, err := os.CreateTemp("", "audio-*.tmp")
+	if err != nil {
+		return 0, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }()
+
+	_, err = io.Copy(tmp, r)
+	if err != nil {
+		_ = tmp.Close()
+		return 0, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	err = tmp.Close()
+	if err != nil {
+		return 0, fmt.Errorf("failed to close temp file: %w", err)
+	}
+
+	ctx := context.Background()
+	out, err := exec.CommandContext(ctx,
+		"ffprobe",
+		"-v", "quiet",
+		"-print_format", "json",
+		"-show_format",
+		tmpName,
+	).Output()
+	if err != nil {
+		return 0, nil
+	}
+
+	var result ffprobeOutput
+	err = json.Unmarshal(out, &result)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse ffprobe output: %w", err)
+	}
+
+	if result.Format.Duration == "" {
+		return 0, nil
+	}
+
+	f, err := strconv.ParseFloat(result.Format.Duration, 64)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse duration %q: %w", result.Format.Duration, err)
+	}
+
+	return int(f), nil
 }
