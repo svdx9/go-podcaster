@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 )
 
@@ -19,9 +20,9 @@ func (m *mockRepo) Insert(ctx context.Context, episode repository.Episode) error
 	return m.err
 }
 
-func (m *mockRepo) GetByUUID(ctx context.Context, uuid string) (repository.Episode, error) {
+func (m *mockRepo) GetByUUID(ctx context.Context, UUID uuid.UUID) (repository.Episode, error) {
 	for _, ep := range m.episodes {
-		if ep.UUID == uuid {
+		if ep.UUID == UUID {
 			return ep, nil
 		}
 	}
@@ -39,7 +40,7 @@ func (m *mockRepo) List(ctx context.Context, limit, offset int) ([]repository.Ep
 	return m.episodes[offset:end], m.err
 }
 
-func (m *mockRepo) Delete(ctx context.Context, uuid string) error {
+func (m *mockRepo) Delete(ctx context.Context, UUID uuid.UUID) error {
 	return m.err
 }
 
@@ -55,7 +56,7 @@ func TestRender(t *testing.T) {
 	repo := &mockRepo{
 		episodes: []repository.Episode{
 			{
-				UUID:         "test-uuid-1",
+				UUID:         uuid.Must(uuid.NewV7()),
 				Title:        "Test Episode",
 				Description:  "A test episode description",
 				Author:       "Test Author",
@@ -90,7 +91,7 @@ func TestRender(t *testing.T) {
 	if !strings.Contains(xml, "<enclosure") {
 		t.Error("Render() should contain enclosure")
 	}
-	if !strings.Contains(xml, "https://example.com/files/test-uuid-1/test.mp3") {
+	if !strings.Contains(xml, "https://example.com/files/test-uuid-1") {
 		t.Error("Render() should contain enclosure URL")
 	}
 }

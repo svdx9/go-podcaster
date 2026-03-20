@@ -127,7 +127,7 @@ func (g *Generator) episodeToItem(ep repository.Episode) Item {
 		Author:      ep.Author,
 		Duration:    formatDuration(ep.DurationSecs),
 		Enclosure: Enclosure{
-			URL:    fmt.Sprintf("%s/files/%s/%s", g.baseURL, ep.UUID, ep.FileName),
+			URL:    fmt.Sprintf("%s/files/%s", g.baseURL, ep.UUID),
 			Length: ep.FileSize,
 			Type:   ep.MimeType,
 		},
