@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -20,12 +21,20 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg, err := config.Load()
+	cfg, err := config.FromEnv()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	slog.Info("config loaded", "config", cfg.Redacted())
+	logger := slog.New(
+		slog.NewTextHandler(
+			os.Stderr,
+			&slog.HandlerOptions{Level: cfg.LogLevel}, //nolint:exhaustruct
+		),
+	)
+	slog.SetDefault(logger)
+
+	logger.Info("config loaded", "config", cfg.Redacted())
 
 	database, err := db.Open(ctx, cfg.DBPath)
 	if err != nil {
@@ -34,22 +43,21 @@ func main() {
 	defer func() {
 		closeErr := database.Close()
 		if closeErr != nil {
-			slog.Error("failed to close database", "error", closeErr)
+			logger.Error("failed to close database", "error", closeErr)
 		}
 	}()
 
 	querier := db.NewQuerier(database)
 	episodeRepo := db.NewEpisodeRepository(querier)
 
-	// initialize file store
 	fileStore := file.NewStore(cfg.UploadDir)
 	err = fileStore.Init()
 	if err != nil {
 		log.Fatalf("failed to initialize file store: %v", err)
 	}
 
-	svc := service.New(episodeRepo, fileStore)
-	handler := api.New(svc)
+	svc := service.New(logger, episodeRepo, fileStore)
+	handler := api.New(logger, svc)
 
 	baseUrl, err := cfg.BaseURLWithPort()
 	if err != nil {
