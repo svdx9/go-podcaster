@@ -25,6 +25,9 @@ migrate-down:
 build:
 	$(GO) build -o bin/server ./cmd/server
 
+docker-build:
+	docker build -t go-podcaster:local .
+
 test:
 	$(GO) test -race -coverprofile=coverage.out ./...
 
