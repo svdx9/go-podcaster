@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -150,7 +151,7 @@ func TestUploadValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc := New(&mockRepository{}, &memFileStore{})
+			svc := New(slog.Default(), &mockRepository{}, &memFileStore{})
 			_, err := svc.Upload(context.Background(), tt.req)
 			if err == nil {
 				t.Fatal("Upload() expected error, got nil")
@@ -172,7 +173,7 @@ func TestListPagination(t *testing.T) {
 		},
 		err: nil,
 	}
-	svc := New(repo, &memFileStore{})
+	svc := New(slog.Default(), repo, &memFileStore{})
 
 	t.Run("default limit", func(t *testing.T) {
 		t.Parallel()

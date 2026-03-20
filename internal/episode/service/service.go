@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,14 +34,16 @@ type UploadRequest struct {
 }
 
 type Service struct {
-	repo  repository.Repository
-	store file.Store
+	logger *slog.Logger
+	repo   repository.Repository
+	store  file.Store
 }
 
-func New(repo repository.Repository, store file.Store) *Service {
+func New(logger *slog.Logger, repo repository.Repository, store file.Store) *Service {
 	return &Service{
-		repo:  repo,
-		store: store,
+		logger: logger,
+		repo:   repo,
+		store:  store,
 	}
 }
 
@@ -71,14 +74,16 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 	if err != nil {
 		return repository.Episode{}, fmt.Errorf("failed to extract metadata: %w", err)
 	}
+	s.logger.Debug("meta_extraction", "meta", meta)
 	_, seekErr = req.File.Seek(0, io.SeekStart)
 	if seekErr != nil {
 		return repository.Episode{}, fmt.Errorf("failed to seek file: %w", seekErr)
 	}
 
-	if meta.DurationSecs == 0 {
-		return repository.Episode{}, ErrZeroDurationEpisode
-	}
+	// if meta.DurationSecs == 0 {
+	// TODO: need better meta data extraction, so don't error here for now
+	// return repository.Episode{}, ErrZeroDurationEpisode
+	// }
 
 	title := req.Title
 	if title == "" {

@@ -12,16 +12,15 @@ import (
 	"github.com/svdx9/go-podcaster/internal/episode/service"
 )
 
-var ErrZeroDurationEpisode = errors.New("zero duration episode")
-
 const requestBodyLimit = 32 << 20
 
 type Handler struct {
-	svc *service.Service
+	logger *slog.Logger
+	svc    *service.Service
 }
 
-func New(svc *service.Service) *Handler {
-	return &Handler{svc: svc}
+func New(logger *slog.Logger, svc *service.Service) *Handler {
+	return &Handler{logger: logger, svc: svc}
 }
 
 func (h *Handler) PostV1Episodes(w http.ResponseWriter, r *http.Request) {
@@ -129,6 +128,7 @@ func (h *Handler) handleServiceError(w http.ResponseWriter, err error) {
 		h.writeError(w, 415, "unsupported_media", "file type not supported")
 		return
 	}
+	h.logger.Error("failed to handle service error", "error", err)
 	h.writeError(w, http.StatusInternalServerError, "internal_error", "an internal error occurred")
 }
 
