@@ -1,0 +1,13 @@
+.git
+.github
+bin/
+tmp/
+tools/
+uploads/
+db/
+*.db
+*.db-wal
+*.db-shm
+coverage.out
+.air.toml
+.golangci.yml
