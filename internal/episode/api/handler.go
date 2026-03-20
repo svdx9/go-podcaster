@@ -152,7 +152,7 @@ func episodeToResponse(ep repository.Episode) apiv1.Episode {
 		PubDate:      ep.PubDate,
 		CreatedAt:    ep.CreatedAt,
 		Author:       &ep.Author,
-		DurationSecs: &ep.DurationSecs,
+		DurationSecs: ep.DurationSecs,
 	}
 	return resp
 }

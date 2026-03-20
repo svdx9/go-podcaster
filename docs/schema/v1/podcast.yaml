@@ -236,4 +236,5 @@ components:
         - file_name
         - file_size
         - mime_type
+        - duration_secs
         - created_at

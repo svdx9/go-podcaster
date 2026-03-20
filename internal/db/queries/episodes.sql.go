@@ -67,7 +67,7 @@ type InsertEpisodeParams struct {
 	FileName     string         `json:"file_name"`
 	FileSize     int64          `json:"file_size"`
 	MimeType     string         `json:"mime_type"`
-	DurationSecs sql.NullInt64  `json:"duration_secs"`
+	DurationSecs int64          `json:"duration_secs"`
 }
 
 func (q *Queries) InsertEpisode(ctx context.Context, arg InsertEpisodeParams) (Episode, error) {
