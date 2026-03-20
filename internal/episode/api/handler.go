@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	apiv1 "github.com/svdx9/go-podcaster/internal/api/v1"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
 	"github.com/svdx9/go-podcaster/internal/episode/service"
@@ -107,8 +106,8 @@ func (h *Handler) GetV1Episodes(w http.ResponseWriter, r *http.Request, params a
 	}
 }
 
-func (h *Handler) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID) {
-	err := h.svc.Delete(r.Context(), uuid.String())
+func (h *Handler) DeleteV1EpisodesUuid(w http.ResponseWriter, r *http.Request, UUID uuid.UUID) {
+	err := h.svc.Delete(r.Context(), UUID)
 	if err != nil {
 		h.handleServiceError(w, err)
 		return
@@ -144,7 +143,7 @@ func (h *Handler) writeError(w http.ResponseWriter, status int, code, message st
 
 func episodeToResponse(ep repository.Episode) apiv1.Episode {
 	resp := apiv1.Episode{
-		Uuid:         uuid.MustParse(ep.UUID),
+		Uuid:         ep.UUID,
 		Title:        ep.Title,
 		Description:  ep.Description,
 		FileName:     ep.FileName,

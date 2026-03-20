@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/audio"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
+	"github.com/svdx9/go-podcaster/internal/file"
 )
 
 var (
@@ -22,61 +21,6 @@ var (
 	ErrMissingFile         = errors.New("file is required")
 	ErrFileNotSeekable     = errors.New("file must be seekable")
 )
-
-// FileStore abstracts file persistence so the service has no direct
-// dependency on the local filesystem.
-type FileStore interface {
-	// Save writes r to storage keyed by uuid+ext and returns the stored
-	// path and the number of bytes written.
-	Save(uuid, ext string, r io.Reader) (filePath string, written int64, err error)
-	// Delete removes all stored files for uuid.
-	Delete(uuid string) error
-}
-
-// LocalFileStore is the production FileStore backed by the local filesystem.
-type LocalFileStore struct {
-	uploadDir string
-}
-
-func NewLocalFileStore(uploadDir string) *LocalFileStore {
-	return &LocalFileStore{uploadDir: uploadDir}
-}
-
-func (l *LocalFileStore) Save(uuid, ext string, r io.Reader) (string, int64, error) {
-	episodeDir := filepath.Join(l.uploadDir, uuid)
-	err := os.MkdirAll(episodeDir, 0o755)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to create episode directory: %w", err)
-	}
-
-	filePath := filepath.Join(episodeDir, uuid+ext)
-	f, err := os.Create(filePath)
-	if err != nil {
-		_ = os.RemoveAll(episodeDir)
-		return "", 0, fmt.Errorf("failed to create file: %w", err)
-	}
-
-	written, err := io.Copy(f, r)
-	closeErr := f.Close()
-	if closeErr != nil && err == nil {
-		err = fmt.Errorf("failed to close file: %w", closeErr)
-	}
-	if err != nil {
-		_ = os.RemoveAll(episodeDir)
-		return "", 0, err
-	}
-
-	return filePath, written, nil
-}
-
-func (l *LocalFileStore) Delete(uuid string) error {
-	episodeDir := filepath.Join(l.uploadDir, uuid)
-	err := os.RemoveAll(episodeDir)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to remove episode directory: %w", err)
-	}
-	return nil
-}
 
 type UploadRequest struct {
 	Title       string
@@ -90,10 +34,10 @@ type UploadRequest struct {
 
 type Service struct {
 	repo  repository.Repository
-	store FileStore
+	store file.Store
 }
 
-func New(repo repository.Repository, store FileStore) *Service {
+func New(repo repository.Repository, store file.Store) *Service {
 	return &Service{
 		repo:  repo,
 		store: store,
@@ -152,21 +96,19 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		}
 	}
 
-	episodeUUID := uuid.New().String()
-	ext := filepath.Ext(req.Filename)
-	filePath, written, err := s.store.Save(episodeUUID, ext, req.File)
+	// write to storage
+	fileId, written, err := s.store.Save(req.File)
 	if err != nil {
 		return repository.Episode{}, err
 	}
 
 	episode := repository.Episode{
-		UUID:         episodeUUID,
+		UUID:         fileId,
 		Title:        title,
 		Description:  req.Description,
 		Author:       req.Author,
 		PubDate:      pubDate,
-		FilePath:     filePath,
-		FileName:     episodeUUID + ext,
+		FileName:     req.Filename,
 		FileSize:     written,
 		MimeType:     mime,
 		DurationSecs: meta.DurationSecs,
@@ -179,15 +121,15 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 
 	err = s.repo.Insert(ctx, episode)
 	if err != nil {
-		_ = s.store.Delete(episodeUUID)
+		_ = s.store.Delete(fileId)
 		return repository.Episode{}, fmt.Errorf("failed to insert episode: %w", err)
 	}
 
 	return episode, nil
 }
 
-func (s *Service) Delete(ctx context.Context, uuid string) error {
-	_, err := s.repo.GetByUUID(ctx, uuid)
+func (s *Service) Delete(ctx context.Context, uuid uuid.UUID) error {
+	ep, err := s.repo.GetByUUID(ctx, uuid)
 	if err != nil {
 		return err
 	}
@@ -197,7 +139,7 @@ func (s *Service) Delete(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	err = s.store.Delete(uuid)
+	err = s.store.Delete(ep.UUID)
 	if err != nil {
 		return err
 	}

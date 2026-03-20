@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var ErrNotFound = errors.New("not found")
 
 type Episode struct {
-	UUID         string
+	UUID         uuid.UUID
 	Title        string
 	Description  string
 	Author       string
@@ -24,8 +26,8 @@ type Episode struct {
 
 type Repository interface {
 	Insert(ctx context.Context, episode Episode) error
-	GetByUUID(ctx context.Context, uuid string) (Episode, error)
+	GetByUUID(ctx context.Context, UUID uuid.UUID) (Episode, error)
 	List(ctx context.Context, limit, offset int) ([]Episode, error)
-	Delete(ctx context.Context, uuid string) error
+	Delete(ctx context.Context, UUID uuid.UUID) error
 	ListAll(ctx context.Context) ([]Episode, error)
 }

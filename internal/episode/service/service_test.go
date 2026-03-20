@@ -2,12 +2,16 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
+	"github.com/svdx9/go-podcaster/internal/file"
 )
 
 var (
@@ -24,9 +28,9 @@ func (m *mockRepository) Insert(ctx context.Context, episode repository.Episode)
 	return m.err
 }
 
-func (m *mockRepository) GetByUUID(ctx context.Context, uuid string) (repository.Episode, error) {
+func (m *mockRepository) GetByUUID(ctx context.Context, UUID uuid.UUID) (repository.Episode, error) {
 	for _, ep := range m.episodes {
-		if ep.UUID == uuid {
+		if ep.UUID == UUID {
 			return ep, nil
 		}
 	}
@@ -44,9 +48,9 @@ func (m *mockRepository) List(ctx context.Context, limit, offset int) ([]reposit
 	return m.episodes[offset:end], m.err
 }
 
-func (m *mockRepository) Delete(ctx context.Context, uuid string) error {
+func (m *mockRepository) Delete(ctx context.Context, UUID uuid.UUID) error {
 	for i, ep := range m.episodes {
-		if ep.UUID == uuid {
+		if ep.UUID == UUID {
 			m.episodes = append(m.episodes[:i], m.episodes[i+1:]...)
 			return nil
 		}
@@ -60,12 +64,20 @@ func (m *mockRepository) ListAll(ctx context.Context) ([]repository.Episode, err
 
 type memFileStore struct{}
 
-func (m *memFileStore) Save(uuid, ext string, r io.Reader) (string, int64, error) {
-	n, err := io.Copy(io.Discard, r)
-	return uuid + ext, n, err
+func (m *memFileStore) Save(r io.Reader) (uuid.UUID, int64, error) {
+	hash := sha256.New()
+	writer := io.MultiWriter(hash, io.Discard)
+	n, err := io.Copy(writer, r)
+	new, err := uuid.NewV7()
+	if err != nil {
+		return uuid.Nil, 0, fmt.Errorf("%w: %w", file.ErrFileCreate, err)
+	}
+	uuid := uuid.NewSHA1(new, hash.Sum(nil))
+	return uuid, n, nil
 }
 
-func (m *memFileStore) Delete(uuid string) error { return nil }
+func (m *memFileStore) Delete(uuid uuid.UUID) error                                     { return nil }
+func (m *memFileStore) ReadSeekFile(uuid uuid.UUID, fn func(io.ReadSeeker) error) error { return nil }
 
 type mockReadSeeker struct {
 	data    []byte
@@ -151,9 +163,9 @@ func TestListPagination(t *testing.T) {
 	t.Parallel()
 	repo := &mockRepository{
 		episodes: []repository.Episode{
-			{UUID: "1", Title: "Ep1", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
-			{UUID: "2", Title: "Ep2", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
-			{UUID: "3", Title: "Ep3", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
+			{UUID: uuid.UUID{1}, Title: "Ep1", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
+			{UUID: uuid.UUID{2}, Title: "Ep2", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
+			{UUID: uuid.UUID{3}, Title: "Ep3", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
 		},
 		err: nil,
 	}
