@@ -22,6 +22,10 @@ var (
 	ErrFileNotSeekable    = errors.New("file must be seekable")
 )
 
+type probeJob struct {
+	UUID uuid.UUID
+}
+
 type UploadRequest struct {
 	Title       string
 	Description string
@@ -33,16 +37,18 @@ type UploadRequest struct {
 }
 
 type Service struct {
-	logger *slog.Logger
-	repo   repository.Repository
-	store  file.Store
+	logger     *slog.Logger
+	repo       repository.Repository
+	store      file.Store
+	probeQueue chan probeJob
 }
 
 func New(logger *slog.Logger, repo repository.Repository, store file.Store) *Service {
 	return &Service{
-		logger: logger,
-		repo:   repo,
-		store:  store,
+		logger:     logger,
+		repo:       repo,
+		store:      store,
+		probeQueue: make(chan probeJob, 100),
 	}
 }
 
@@ -125,6 +131,12 @@ func (s *Service) Upload(ctx context.Context, req UploadRequest) (repository.Epi
 		return repository.Episode{}, fmt.Errorf("failed to insert episode: %w", err)
 	}
 
+	select {
+	case s.probeQueue <- probeJob{UUID: episode.UUID}:
+	default:
+		s.logger.Warn("probe queue full, duration will remain 0", "uuid", episode.UUID)
+	}
+
 	return episode, nil
 }
 
@@ -158,4 +170,44 @@ func (s *Service) List(ctx context.Context, limit, offset int) ([]repository.Epi
 		offset = 0
 	}
 	return s.repo.List(ctx, limit, offset)
+}
+
+func (s *Service) StartBackgroundProbe(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case job, ok := <-s.probeQueue:
+				if !ok {
+					return
+				}
+				s.processProbeJob(ctx, job)
+			}
+		}
+	}()
+}
+
+func (s *Service) processProbeJob(ctx context.Context, job probeJob) {
+	err := s.store.ReadSeekFile(job.UUID, func(r io.ReadSeeker) error {
+		secs, err := audio.ProbeDuration(r)
+		if err != nil {
+			s.logger.Error("failed to probe duration", "uuid", job.UUID, "error", err)
+			return err
+		}
+		if secs == 0 {
+			s.logger.Warn("probe returned zero duration", "uuid", job.UUID)
+			return nil
+		}
+		err = s.repo.UpdateDuration(ctx, job.UUID, secs)
+		if err != nil {
+			s.logger.Error("failed to update duration", "uuid", job.UUID, "error", err)
+			return err
+		}
+		s.logger.Info("updated episode duration", "uuid", job.UUID, "duration_secs", secs)
+		return nil
+	})
+	if err != nil {
+		s.logger.Error("probe job failed", "uuid", job.UUID, "error", err)
+	}
 }
