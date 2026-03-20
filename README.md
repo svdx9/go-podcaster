@@ -48,10 +48,11 @@ curl http://localhost:9871/files/<uuid> -o episode.mp3
 ## Running
 
 ```bash
-make migrate-up DB_PATH=./podcast.db
 make build
 ./bin/server
 ```
+
+The database schema is created automatically on startup if the database is not initialized.
 
 Or with hot reload:
 
@@ -120,7 +121,7 @@ CREATE TABLE episodes (
   file_name     TEXT NOT NULL,
   file_size     INTEGER NOT NULL,
   mime_type     TEXT NOT NULL,
-  duration_secs INTEGER,
+  duration_secs INTEGER NOT NULL,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ```

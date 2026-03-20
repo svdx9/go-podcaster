@@ -16,12 +16,6 @@ generate: tools-install
 sqlc: tools-install
 	$(TOOLS_BIN)/sqlc generate
 
-migrate-up:
-	$(TOOLS_BIN)/migrate -database "sqlite3://$(DB_PATH)" -path sql/migrations up
-
-migrate-down:
-	$(TOOLS_BIN)/migrate -database "sqlite3://$(DB_PATH)" -path sql/migrations down
-
 build:
 	$(GO) build -o bin/server ./cmd/server
 
