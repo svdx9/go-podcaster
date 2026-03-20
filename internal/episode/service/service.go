@@ -19,7 +19,6 @@ var (
 	ErrUnsupportedMedia   = errors.New("unsupported media type")
 	ErrMissingDescription = errors.New("description is required")
 	ErrMissingFile        = errors.New("file is required")
-	ErrFileNotSeekable    = errors.New("file must be seekable")
 )
 
 type probeJob struct {
