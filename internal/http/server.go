@@ -7,19 +7,18 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	openapi_types "github.com/oapi-codegen/runtime/types"
+	"github.com/google/uuid"
 	apiv1 "github.com/svdx9/go-podcaster/internal/api/v1"
 	"github.com/svdx9/go-podcaster/internal/config"
+	"github.com/svdx9/go-podcaster/internal/db/queries"
 	episodeHandler "github.com/svdx9/go-podcaster/internal/episode/api"
 	"github.com/svdx9/go-podcaster/internal/feed"
+	"github.com/svdx9/go-podcaster/internal/file"
 )
 
 type feedGenerator interface {
@@ -27,9 +26,11 @@ type feedGenerator interface {
 }
 type Server struct {
 	*episodeHandler.Handler
-	cfg     config.Config
-	server  *http.Server
-	feedgen feedGenerator
+	cfg       config.Config
+	server    *http.Server
+	feedgen   feedGenerator
+	fileStore file.Store
+	querier   queries.Querier
 }
 
 func New(cfg config.Config, episodeHandler *episodeHandler.Handler, feedGen *feed.Generator) *Server {
@@ -74,31 +75,26 @@ func (s *Server) GetFeedXml(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) GetFilesUuidFilename(w http.ResponseWriter, r *http.Request, uuid openapi_types.UUID, filename string) {
+func (s *Server) GetFilesByUuid(w http.ResponseWriter, r *http.Request, UUID uuid.UUID) {
 	// Serve audio file
-	// (GET /files/{uuid}/{filename})
-	filePath := filepath.Join(s.cfg.UploadDir, uuid.String(), filename)
+	// (GET /files/{uuid})
 
-	file, err := os.Open(filePath)
+	// get content type and modtime from database
+
+	episode, err := s.querier.GetEpisodeByUUID(r.Context(), UUID)
 	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		// TODO: improve this
+		http.Error(w, "No such episode", http.StatusInternalServerError)
 		return
 	}
-	defer func() { _ = file.Close() }()
-
-	stat, err := file.Stat()
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+	cb := func(file io.ReadSeeker) error {
+		w.Header().Set("Content-Type", episode.MimeType)
+		http.ServeContent(w, r, "", episode.CreatedAt, file)
+		return nil
 	}
 
-	contentType := getContentType(filename)
-	w.Header().Set("Content-Type", contentType)
-	http.ServeContent(w, r, filename, stat.ModTime(), file)
+	s.fileStore.ReadSeekFile(UUID, cb)
+
 }
 
 type slogLogFormatter struct{}
@@ -126,7 +122,7 @@ func (e *slogLogEntry) Panic(v interface{}, stack []byte) {
 }
 
 // writeNoFeedError writes a JSON error response when system is not initialized
-func (s *Server) writeNoFeedError(w http.ResponseWriter, r *http.Request) {
+func (s *Server) writeNoFeedError(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusServiceUnavailable)
 
@@ -134,26 +130,6 @@ func (s *Server) writeNoFeedError(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte(errorResponse))
 	if err != nil {
 		slog.Error("failed to write error response", "error", err)
-	}
-}
-
-func getContentType(filename string) string {
-	lower := strings.ToLower(filename)
-	switch {
-	case strings.HasSuffix(lower, ".mp3"):
-		return "audio/mpeg"
-	case strings.HasSuffix(lower, ".m4a"):
-		return "audio/x-m4a"
-	case strings.HasSuffix(lower, ".mp4"):
-		return "audio/mp4"
-	case strings.HasSuffix(lower, ".aac"):
-		return "audio/aac"
-	case strings.HasSuffix(lower, ".aiff"), strings.HasSuffix(lower, ".aif"):
-		return "audio/x-aiff"
-	case strings.HasSuffix(lower, ".wav"):
-		return "audio/x-wav"
-	default:
-		return "application/octet-stream"
 	}
 }
 
