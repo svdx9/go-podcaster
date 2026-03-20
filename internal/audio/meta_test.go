@@ -76,3 +76,55 @@ func TestMetaDuration(t *testing.T) { //nolint:paralleltest
 		t.Errorf("DurationSecs = %d, want 125", m.DurationSecs)
 	}
 }
+
+func TestReadTags(t *testing.T) { //nolint:paralleltest
+	t.Run("handles file without tags", func(t *testing.T) {
+		tmp, err := os.CreateTemp("", "test-*.mp3")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		tmpName := tmp.Name()
+		defer func() { _ = os.Remove(tmpName) }()
+		_ = tmp.Close()
+
+		f, err := os.Open(tmpName)
+		if err != nil {
+			t.Fatalf("failed to open temp file: %v", err)
+		}
+		defer func() { _ = f.Close() }()
+
+		tags, err := ReadTags(f)
+		if err != nil {
+			t.Errorf("ReadTags() error = %v, want nil", err)
+		}
+		if tags.Title != "" {
+			t.Errorf("ReadTags() title = %q, want empty", tags.Title)
+		}
+		if tags.Artist != "" {
+			t.Errorf("ReadTags() artist = %q, want empty", tags.Artist)
+		}
+	})
+}
+
+func TestProbeDuration(t *testing.T) { //nolint:paralleltest
+	t.Run("returns error when ffprobe not found", func(t *testing.T) {
+		tmp, err := os.CreateTemp("", "test-*.mp3")
+		if err != nil {
+			t.Fatalf("failed to create temp file: %v", err)
+		}
+		tmpName := tmp.Name()
+		defer func() { _ = os.Remove(tmpName) }()
+		_ = tmp.Close()
+
+		f, err := os.Open(tmpName)
+		if err != nil {
+			t.Fatalf("failed to open temp file: %v", err)
+		}
+		defer func() { _ = f.Close() }()
+
+		_, err = ProbeDuration(f)
+		if !errors.Is(err, ErrFfprobeNotFound) {
+			t.Skip("ffprobe available on PATH, skipping error test")
+		}
+	})
+}
