@@ -114,8 +114,8 @@ func ffprobeDuration(r io.Reader) (int, error) {
 		"-show_format",
 		tmpName,
 	).Output()
-	if err != nil {
-		return 0, nil
+if err != nil {
+		return 0, fmt.Errorf("ffprobe failed: %w", err)
 	}
 
 	var result ffprobeOutput
