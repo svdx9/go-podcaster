@@ -80,6 +80,14 @@ func (r *EpisodeRepository) ListAll(ctx context.Context) ([]repository.Episode, 
 	return toDomainEpisodes(episodes)
 }
 
+func (r *EpisodeRepository) ListAllValid(ctx context.Context) ([]repository.Episode, error) {
+	episodes, err := r.q.ListAllValidEpisodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainEpisodes(episodes)
+}
+
 func (r *EpisodeRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error {
 	return r.q.UpdateEpisodeDuration(ctx, queries.UpdateEpisodeDurationParams{
 		DurationSecs: int64(durationSecs),
