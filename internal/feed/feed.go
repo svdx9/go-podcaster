@@ -67,10 +67,12 @@ func New(repo repository.Repository, baseURL, title, description, author, langua
 }
 
 func (g *Generator) Render(ctx context.Context, w io.Writer) error {
-	episodes, err := g.repo.ListAll(ctx)
+	episodes, err := g.repo.ListAllValid(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list episodes: %w", err)
 	}
+
+	fmt.Printf("got %d episodes", len(episodes))
 
 	items := make([]Item, len(episodes))
 	for i, ep := range episodes {
