@@ -140,6 +140,47 @@ func (q *Queries) ListAllEpisodes(ctx context.Context) ([]Episode, error) {
 	return items, nil
 }
 
+const listAllValidEpisodes = `-- name: ListAllValidEpisodes :many
+SELECT uuid, title, description, author, pub_date, file_path, file_name, file_size, mime_type, duration_secs, created_at FROM episodes
+WHERE duration_secs > 0
+ORDER BY pub_date DESC
+`
+
+func (q *Queries) ListAllValidEpisodes(ctx context.Context) ([]Episode, error) {
+	rows, err := q.db.QueryContext(ctx, listAllValidEpisodes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Episode
+	for rows.Next() {
+		var i Episode
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Title,
+			&i.Description,
+			&i.Author,
+			&i.PubDate,
+			&i.FilePath,
+			&i.FileName,
+			&i.FileSize,
+			&i.MimeType,
+			&i.DurationSecs,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEpisodes = `-- name: ListEpisodes :many
 SELECT uuid, title, description, author, pub_date, file_path, file_name, file_size, mime_type, duration_secs, created_at FROM episodes
 ORDER BY created_at DESC
@@ -192,6 +233,53 @@ SELECT uuid, title, description, author, pub_date, file_path, file_name, file_si
 
 func (q *Queries) ListEpisodesPendingDuration(ctx context.Context) ([]Episode, error) {
 	rows, err := q.db.QueryContext(ctx, listEpisodesPendingDuration)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Episode
+	for rows.Next() {
+		var i Episode
+		if err := rows.Scan(
+			&i.Uuid,
+			&i.Title,
+			&i.Description,
+			&i.Author,
+			&i.PubDate,
+			&i.FilePath,
+			&i.FileName,
+			&i.FileSize,
+			&i.MimeType,
+			&i.DurationSecs,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listValidEpisodes = `-- name: ListValidEpisodes :many
+SELECT uuid, title, description, author, pub_date, file_path, file_name, file_size, mime_type, duration_secs, created_at FROM episodes
+WHERE duration_secs > 0
+ORDER BY created_at DESC
+LIMIT ? OFFSET ?
+`
+
+type ListValidEpisodesParams struct {
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+}
+
+func (q *Queries) ListValidEpisodes(ctx context.Context, arg ListValidEpisodesParams) ([]Episode, error) {
+	rows, err := q.db.QueryContext(ctx, listValidEpisodes, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
