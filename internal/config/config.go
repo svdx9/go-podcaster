@@ -54,6 +54,8 @@ import (
 	"strings"
 )
 
+const DefaltDirPerms = os.FileMode(0o755)
+
 type Config struct {
 	Environment        string
 	Port               int

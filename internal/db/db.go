@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/svdx9/go-podcaster/internal/config"
 	"github.com/svdx9/go-podcaster/internal/db/queries"
 	_ "modernc.org/sqlite"
 )
@@ -28,6 +31,13 @@ const createTables = `
 `
 
 func Open(ctx context.Context, dbPath string) (*sql.DB, error) {
+	if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
+		err := os.MkdirAll(dir, config.DefaltDirPerms)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
+	}
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
