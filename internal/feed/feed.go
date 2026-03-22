@@ -67,10 +67,12 @@ func New(repo repository.Repository, baseURL, title, description, author, langua
 }
 
 func (g *Generator) Render(ctx context.Context, w io.Writer) error {
-	episodes, err := g.repo.ListAll(ctx)
+	episodes, err := g.repo.ListAllValid(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list episodes: %w", err)
 	}
+
+	fmt.Printf("got %d episodes", len(episodes))
 
 	items := make([]Item, len(episodes))
 	for i, ep := range episodes {
@@ -125,12 +127,16 @@ func (g *Generator) episodeToItem(ep repository.Episode) Item {
 		Description: ep.Description,
 		PubDate:     pubDate,
 		Author:      ep.Author,
-		Duration:    formatDuration(ep.DurationSecs),
+		Duration:    "",
 		Enclosure: Enclosure{
 			URL:    fmt.Sprintf("%s/files/%s", g.baseURL, ep.UUID),
 			Length: ep.FileSize,
 			Type:   ep.MimeType,
 		},
+	}
+
+	if ep.DurationSecs > 0 {
+		item.Duration = formatDuration(ep.DurationSecs)
 	}
 
 	return item

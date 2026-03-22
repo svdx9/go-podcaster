@@ -9,44 +9,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
+	"github.com/svdx9/go-podcaster/internal/episode/repository/repositorytest"
 )
-
-type mockRepo struct {
-	episodes []repository.Episode
-	err      error
-}
-
-func (m *mockRepo) Insert(ctx context.Context, episode repository.Episode) error {
-	return m.err
-}
-
-func (m *mockRepo) GetByUUID(ctx context.Context, UUID uuid.UUID) (repository.Episode, error) {
-	for _, ep := range m.episodes {
-		if ep.UUID == UUID {
-			return ep, nil
-		}
-	}
-	return repository.Episode{}, repository.ErrNotFound
-}
-
-func (m *mockRepo) List(ctx context.Context, limit, offset int) ([]repository.Episode, error) {
-	if len(m.episodes) <= offset {
-		return []repository.Episode{}, nil
-	}
-	end := offset + limit
-	if end > len(m.episodes) {
-		end = len(m.episodes)
-	}
-	return m.episodes[offset:end], m.err
-}
-
-func (m *mockRepo) Delete(ctx context.Context, UUID uuid.UUID) error {
-	return m.err
-}
-
-func (m *mockRepo) ListAll(ctx context.Context) ([]repository.Episode, error) {
-	return m.episodes, m.err
-}
 
 func TestRender(t *testing.T) {
 	t.Parallel()
@@ -55,8 +19,8 @@ func TestRender(t *testing.T) {
 
 	episodeUUID := uuid.Must(uuid.NewV7())
 
-	repo := &mockRepo{
-		episodes: []repository.Episode{
+	repo := &repositorytest.MockRepository{
+		Episodes: []repository.Episode{
 			{
 				UUID:         episodeUUID,
 				Title:        "Test Episode",
@@ -71,7 +35,7 @@ func TestRender(t *testing.T) {
 				CreatedAt:    createdAt,
 			},
 		},
-		err: nil,
+		Err: nil,
 	}
 
 	g := New(repo, "https://example.com", "Test Podcast", "A test podcast", "Podcast Author", "en-us", "Technology", "")
@@ -101,7 +65,7 @@ func TestRender(t *testing.T) {
 
 func TestRenderEmpty(t *testing.T) {
 	t.Parallel()
-	repo := &mockRepo{episodes: []repository.Episode{}, err: nil}
+	repo := &repositorytest.MockRepository{Episodes: []repository.Episode{}, Err: nil}
 
 	g := New(repo, "https://example.com", "Empty Podcast", "No episodes", "Author", "en-us", "", "")
 

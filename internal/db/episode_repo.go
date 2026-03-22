@@ -33,7 +33,7 @@ func (r *EpisodeRepository) Insert(ctx context.Context, episode repository.Episo
 		FileName:     episode.FileName,
 		FileSize:     episode.FileSize,
 		MimeType:     episode.MimeType,
-		DurationSecs: sql.NullInt64{Int64: int64(episode.DurationSecs), Valid: episode.DurationSecs > 0},
+		DurationSecs: int64(episode.DurationSecs),
 	}
 	_, err := r.q.InsertEpisode(ctx, params)
 	return err
@@ -80,6 +80,29 @@ func (r *EpisodeRepository) ListAll(ctx context.Context) ([]repository.Episode, 
 	return toDomainEpisodes(episodes)
 }
 
+func (r *EpisodeRepository) ListAllValid(ctx context.Context) ([]repository.Episode, error) {
+	episodes, err := r.q.ListAllValidEpisodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainEpisodes(episodes)
+}
+
+func (r *EpisodeRepository) UpdateDuration(ctx context.Context, UUID uuid.UUID, durationSecs int) error {
+	return r.q.UpdateEpisodeDuration(ctx, queries.UpdateEpisodeDurationParams{
+		DurationSecs: int64(durationSecs),
+		Uuid:         UUID,
+	})
+}
+
+func (r *EpisodeRepository) ListPendingDuration(ctx context.Context) ([]repository.Episode, error) {
+	episodes, err := r.q.ListEpisodesPendingDuration(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainEpisodes(episodes)
+}
+
 func toDomainEpisode(ep queries.Episode) (repository.Episode, error) {
 	d := repository.Episode{
 		UUID:         ep.Uuid,
@@ -91,7 +114,7 @@ func toDomainEpisode(ep queries.Episode) (repository.Episode, error) {
 		FileName:     ep.FileName,
 		FileSize:     ep.FileSize,
 		MimeType:     ep.MimeType,
-		DurationSecs: int(ep.DurationSecs.Int64),
+		DurationSecs: int(ep.DurationSecs),
 		CreatedAt:    ep.CreatedAt,
 	}
 	return d, nil

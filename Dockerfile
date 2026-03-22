@@ -10,6 +10,5 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /server ./cmd/server
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
 COPY --from=build /server .
-COPY sql/migrations/ ./sql/migrations/
 EXPOSE 8080
 ENTRYPOINT ["./server"]

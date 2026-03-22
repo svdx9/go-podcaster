@@ -21,6 +21,6 @@ type Episode struct {
 	FileName     string         `json:"file_name"`
 	FileSize     int64          `json:"file_size"`
 	MimeType     string         `json:"mime_type"`
-	DurationSecs sql.NullInt64  `json:"duration_secs"`
+	DurationSecs int64          `json:"duration_secs"`
 	CreatedAt    time.Time      `json:"created_at"`
 }

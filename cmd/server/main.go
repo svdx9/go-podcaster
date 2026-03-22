@@ -57,6 +57,19 @@ func main() {
 	}
 
 	svc := service.New(logger, episodeRepo, fileStore)
+
+	pendingEpisodes, err := episodeRepo.ListPendingDuration(ctx)
+	if err != nil {
+		logger.Error("failed to list pending episodes", "error", err)
+	} else {
+		for _, ep := range pendingEpisodes {
+			logger.Info("enqueueing pending episode for duration probe", "uuid", ep.UUID)
+			svc.EnqueueProbe(ep.UUID)
+		}
+	}
+
+	svc.StartBackgroundProbe(ctx)
+
 	handler := api.New(logger, svc)
 
 	baseUrl, err := cfg.BaseURLWithPort()

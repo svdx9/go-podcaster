@@ -12,56 +12,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/svdx9/go-podcaster/internal/episode/repository"
+	"github.com/svdx9/go-podcaster/internal/episode/repository/repositorytest"
 	"github.com/svdx9/go-podcaster/internal/file"
 )
 
-var (
-	errTestRead = errors.New("read error")
-)
-
-type mockRepository struct {
-	episodes []repository.Episode
-	err      error
-}
-
-func (m *mockRepository) Insert(ctx context.Context, episode repository.Episode) error {
-	m.episodes = append(m.episodes, episode)
-	return m.err
-}
-
-func (m *mockRepository) GetByUUID(ctx context.Context, UUID uuid.UUID) (repository.Episode, error) {
-	for _, ep := range m.episodes {
-		if ep.UUID == UUID {
-			return ep, nil
-		}
-	}
-	return repository.Episode{}, repository.ErrNotFound
-}
-
-func (m *mockRepository) List(ctx context.Context, limit, offset int) ([]repository.Episode, error) {
-	if len(m.episodes) <= offset {
-		return []repository.Episode{}, nil
-	}
-	end := offset + limit
-	if end > len(m.episodes) {
-		end = len(m.episodes)
-	}
-	return m.episodes[offset:end], m.err
-}
-
-func (m *mockRepository) Delete(ctx context.Context, UUID uuid.UUID) error {
-	for i, ep := range m.episodes {
-		if ep.UUID == UUID {
-			m.episodes = append(m.episodes[:i], m.episodes[i+1:]...)
-			return nil
-		}
-	}
-	return repository.ErrNotFound
-}
-
-func (m *mockRepository) ListAll(ctx context.Context) ([]repository.Episode, error) {
-	return m.episodes, m.err
-}
+var errTestRead = errors.New("read error")
 
 type memFileStore struct{}
 
@@ -151,7 +106,7 @@ func TestUploadValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc := New(slog.Default(), &mockRepository{}, &memFileStore{})
+			svc := New(slog.Default(), &repositorytest.MockRepository{}, &memFileStore{})
 			_, err := svc.Upload(context.Background(), tt.req)
 			if err == nil {
 				t.Fatal("Upload() expected error, got nil")
@@ -165,13 +120,13 @@ func TestUploadValidation(t *testing.T) {
 
 func TestListPagination(t *testing.T) {
 	t.Parallel()
-	repo := &mockRepository{
-		episodes: []repository.Episode{
+	repo := &repositorytest.MockRepository{
+		Episodes: []repository.Episode{
 			{UUID: uuid.UUID{1}, Title: "Ep1", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
 			{UUID: uuid.UUID{2}, Title: "Ep2", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
 			{UUID: uuid.UUID{3}, Title: "Ep3", Description: "", Author: "", PubDate: time.Time{}, FilePath: "", FileName: "", FileSize: 0, MimeType: "", DurationSecs: 0, CreatedAt: time.Now()},
 		},
-		err: nil,
+		Err: nil,
 	}
 	svc := New(slog.Default(), repo, &memFileStore{})
 

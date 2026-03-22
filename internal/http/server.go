@@ -99,7 +99,6 @@ func (s *Server) GetFilesByUuid(w http.ResponseWriter, r *http.Request, UUID uui
 	if err != nil {
 		slog.Error("failed to read file", "error", err)
 	}
-
 }
 
 type slogLogFormatter struct{}

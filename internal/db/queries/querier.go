@@ -15,7 +15,11 @@ type Querier interface {
 	GetEpisodeByUUID(ctx context.Context, argUuid uuid.UUID) (Episode, error)
 	InsertEpisode(ctx context.Context, arg InsertEpisodeParams) (Episode, error)
 	ListAllEpisodes(ctx context.Context) ([]Episode, error)
+	ListAllValidEpisodes(ctx context.Context) ([]Episode, error)
 	ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]Episode, error)
+	ListEpisodesPendingDuration(ctx context.Context) ([]Episode, error)
+	ListValidEpisodes(ctx context.Context, arg ListValidEpisodesParams) ([]Episode, error)
+	UpdateEpisodeDuration(ctx context.Context, arg UpdateEpisodeDurationParams) error
 }
 
 var _ Querier = (*Queries)(nil)
