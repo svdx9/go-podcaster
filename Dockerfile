@@ -9,6 +9,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /server ./cmd/server
 # --- Runtime stage ---
 FROM golang:1.25-alpine
 WORKDIR /app
+RUN apk add --no-cache ffmpeg
 COPY --from=build /server .
 EXPOSE 8080
 ENTRYPOINT ["./server"]
