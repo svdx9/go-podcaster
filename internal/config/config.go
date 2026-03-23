@@ -242,24 +242,6 @@ func (c Config) Addr() string {
 	return net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 }
 
-func (c Config) BaseURLWithPort() (string, error) {
-	parsedURL, err := url.Parse(c.BaseURL)
-	if err != nil {
-		return "", err
-	}
-
-	standardPort := 80
-	if parsedURL.Scheme == "https" {
-		standardPort = 443
-	}
-
-	if c.Port != standardPort {
-		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), strconv.Itoa(c.Port))
-	}
-
-	return parsedURL.String(), nil
-}
-
 func (c Config) ServerAddr() string {
 	return fmt.Sprintf(":%d", c.Port)
 }

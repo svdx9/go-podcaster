@@ -72,14 +72,9 @@ func main() {
 
 	handler := api.New(logger, svc)
 
-	baseUrl, err := cfg.BaseURLWithPort()
-	if err != nil {
-		log.Fatalf("failed to get base URL: %v", err)
-	}
-
 	feedGen := feed.New(
 		episodeRepo,
-		baseUrl,
+		cfg.BaseURL,
 		cfg.PodcastTitle,
 		cfg.PodcastDescription,
 		cfg.PodcastAuthor,
