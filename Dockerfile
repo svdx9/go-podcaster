@@ -7,7 +7,7 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /server ./cmd/server
 
 # --- Runtime stage ---
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM golang:1.25-alpine
 WORKDIR /app
 COPY --from=build /server .
 EXPOSE 8080
